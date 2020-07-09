@@ -21,9 +21,9 @@ import (
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
-	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers"
+	cfakes "code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	cfcfg "code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"

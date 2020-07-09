@@ -3,7 +3,6 @@ package cmd
 import (
 	golog "log"
 	"os"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/afero"
@@ -11,15 +10,12 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
-	corev1 "k8s.io/api/core/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // from https://github.com/kubernetes/client-go/issues/345
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/boshdns"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
-	"code.cloudfoundry.org/quarks-operator/version"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/operator"
+	"code.cloudfoundry.org/quarks-statefulset/version"
 	"code.cloudfoundry.org/quarks-utils/pkg/cmd"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -32,17 +28,16 @@ const (
 )
 
 var (
-	log              *zap.SugaredLogger
-	debugGracePeriod = time.Second * 5
+	log *zap.SugaredLogger
 )
 
 func wrapError(err error, msg string) error {
-	return errors.Wrapf(err, "cf-operator command failed. %s", msg)
+	return errors.Wrapf(err, "quarks-statefulset command failed. %s", msg)
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "cf-operator",
-	Short: "cf-operator manages BOSH deployments on Kubernetes",
+	Use:   "quarks-statefulset",
+	Short: "quarks-statefulset manages statefulsets on Kubernetes",
 	RunE: func(_ *cobra.Command, args []string) error {
 		log = logger.NewControllerLogger(cmd.LogLevel())
 		defer log.Sync()
@@ -54,25 +49,12 @@ var rootCmd = &cobra.Command{
 
 		cfg := config.NewDefaultConfig(afero.NewOsFs())
 
-		err = operatorimage.SetupOperatorDockerImage(
-			viper.GetString("docker-image-org"),
-			viper.GetString("docker-image-repository"),
-			viper.GetString("docker-image-tag"),
-			corev1.PullPolicy(viper.GetString("docker-image-pull-policy")),
-		)
-		if err != nil {
-			return wrapError(err, "")
-		}
-
 		cmd.Meltdown(cfg)
-		cmd.OperatorNamespace(cfg, log, "cf-operator-namespace")
+		cmd.OperatorNamespace(cfg, log, "quarks-statefulset-namespace")
 		cmd.MonitoredID(cfg)
 
-		boshdns.SetBoshDNSDockerImage(viper.GetString("bosh-dns-docker-image"))
-		boshdns.SetClusterDomain(viper.GetString("cluster-domain"))
-
-		log.Infof("Starting cf-operator %s, monitoring namespaces labeled with '%s'", version.Version, cfg.MonitoredID)
-		log.Infof("cf-operator docker image: %s", config.GetOperatorDockerImage())
+		log.Infof("Starting quarks-statefulset %s, monitoring namespaces labeled with '%s'", version.Version, cfg.MonitoredID)
+		log.Infof("quarks-statefulset docker image: %s", config.GetOperatorDockerImage())
 
 		serviceHost := viper.GetString("operator-webhook-service-host")
 		// Port on which the cf operator webhook kube service listens to.
@@ -80,13 +62,12 @@ var rootCmd = &cobra.Command{
 		useServiceRef := viper.GetBool("operator-webhook-use-service-reference")
 
 		if serviceHost == "" && !useServiceRef {
-			return wrapError(errors.New("couldn't determine webhook server"), "operator-webhook-service-host flag is not set (env variable: CF_OPERATOR_WEBHOOK_SERVICE_HOST)")
+			return wrapError(errors.New("couldn't determine webhook server"), "operator-webhook-service-host flag is not set (env variable: QUARKS_STS_WEBHOOK_SERVICE_HOST)")
 		}
 
 		cfg.WebhookServerHost = serviceHost
 		cfg.WebhookServerPort = servicePort
 		cfg.WebhookUseServiceRef = useServiceRef
-		cfg.MaxBoshDeploymentWorkers = viper.GetInt("max-boshdeployment-workers")
 		cfg.MaxQuarksStatefulSetWorkers = viper.GetInt("max-quarks-statefulset-workers")
 
 		cmd.CtxTimeOut(cfg)
@@ -108,18 +89,16 @@ var rootCmd = &cobra.Command{
 			return wrapError(err, "Failed to create new manager.")
 		}
 
-		ctxlog.Info(ctx, "Waiting for configurations to be applied into a BOSHDeployment resource...")
-
 		err = mgr.Start(signals.SetupSignalHandler())
 		if err != nil {
-			return wrapError(err, "Failed to start cf-operator manager.")
+			return wrapError(err, "Failed to start quarks-statefulset manager.")
 		}
 		return nil
 	},
 	TraverseChildren: true,
 }
 
-// NewCFOperatorCommand returns the `cf-operator` command.
+// NewCFOperatorCommand returns the `quarks-statefulset` command.
 func NewCFOperatorCommand() *cobra.Command {
 	return rootCmd
 }
@@ -137,27 +116,22 @@ func init() {
 
 	argToEnv := map[string]string{}
 
-	cmd.OperatorNamespaceFlags(pf, argToEnv, "cf-operator-namespace")
+	cmd.OperatorNamespaceFlags(pf, argToEnv, "quarks-statefulset-namespace")
 	cmd.MonitoredIDFlags(pf, argToEnv)
 	cmd.CtxTimeOutFlags(pf, argToEnv)
 	cmd.KubeConfigFlags(pf, argToEnv)
 	cmd.LoggerFlags(pf, argToEnv)
-	cmd.DockerImageFlags(pf, argToEnv, "cf-operator", version.Version)
 	cmd.ApplyCRDsFlags(pf, argToEnv)
 	cmd.MeltdownFlags(pf, argToEnv)
 
 	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")
-	pf.Int("max-boshdeployment-workers", 1, "Maximum number of workers concurrently running BOSHDeployment controller")
 	pf.Int("max-quarks-statefulset-workers", 1, "Maximum number of workers concurrently running QuarksStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")
 	pf.StringP("operator-webhook-service-port", "p", "2999", "Port the webhook server listens on")
 	pf.BoolP("operator-webhook-use-service-reference", "x", false, "If true the webhook service is targeted using a service reference instead of a URL")
 
 	for _, name := range []string{
-		"bosh-dns-docker-image",
-		"cluster-domain",
-		"max-boshdeployment-workers",
 		"max-quarks-statefulset-workers",
 		"operator-webhook-service-host",
 		"operator-webhook-service-port",
@@ -166,13 +140,10 @@ func init() {
 		viper.BindPFlag(name, pf.Lookup(name))
 	}
 
-	argToEnv["bosh-dns-docker-image"] = "BOSH_DNS_DOCKER_IMAGE"
-	argToEnv["cluster-domain"] = "CLUSTER_DOMAIN"
-	argToEnv["max-boshdeployment-workers"] = "MAX_BOSHDEPLOYMENT_WORKERS"
 	argToEnv["max-quarks-statefulset-workers"] = "MAX_QUARKS_STATEFULSET_WORKERS"
-	argToEnv["operator-webhook-service-host"] = "CF_OPERATOR_WEBHOOK_SERVICE_HOST"
-	argToEnv["operator-webhook-service-port"] = "CF_OPERATOR_WEBHOOK_SERVICE_PORT"
-	argToEnv["operator-webhook-use-service-reference"] = "CF_OPERATOR_WEBHOOK_USE_SERVICE_REFERENCE"
+	argToEnv["operator-webhook-service-host"] = "QUARKS_STS_WEBHOOK_SERVICE_HOST"
+	argToEnv["operator-webhook-service-port"] = "QUARKS_STS_WEBHOOK_SERVICE_PORT"
+	argToEnv["operator-webhook-use-service-reference"] = "QUARKS_STS_WEBHOOK_USE_SERVICE_REFERENCE"
 
 	// Add env variables to help
 	cmd.AddEnvToUsage(rootCmd, argToEnv)

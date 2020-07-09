@@ -2,24 +2,20 @@ package environment
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"sync/atomic"
 	"time"
 
 	gomegaConfig "github.com/onsi/ginkgo/config"
 	"github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" //from https://github.com/kubernetes/client-go/issues/345
 	"k8s.io/client-go/rest"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/client/clientset/versioned"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/quarks-operator/testing"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/client/clientset/versioned"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/operator"
+	"code.cloudfoundry.org/quarks-statefulset/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -87,30 +83,6 @@ func (e *Environment) SetupClientsets() error {
 	}
 
 	return nil
-}
-
-// NodeIP returns a public IP of a node
-func (e *Environment) NodeIP() (string, error) {
-	if override, ok := os.LookupEnv("CF_OPERATOR_NODE_IP"); ok {
-		// The user has specified a particular node IP to use; return that.
-		return override, nil
-	}
-
-	nodes, err := e.Clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "getting the list of nodes")
-	}
-
-	if len(nodes.Items) == 0 {
-		return "", fmt.Errorf("got an empty list of nodes")
-	}
-
-	addresses := nodes.Items[0].Status.Addresses
-	if len(addresses) == 0 {
-		return "", fmt.Errorf("node has an empty list of addresses")
-	}
-
-	return addresses[0].Address, nil
 }
 
 // ApplyCRDs applies the CRDs to the cluster

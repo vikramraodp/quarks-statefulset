@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"code.cloudfoundry.org/quarks-operator/version"
+	"code.cloudfoundry.org/quarks-statefulset/version"
 	"github.com/spf13/cobra"
 )
 

@@ -16,33 +16,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
-	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers"
+	cfakes "code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
-
-var _ = Describe("FilterLabels", func() {
-	var labels map[string]string
-
-	Context("map of labels", func() {
-
-		BeforeEach(func() {
-			labels = make(map[string]string)
-			labels[bdv1.LabelDeploymentName] = "xxx"
-			labels[bdv1.LabelDeploymentVersion] = "3"
-		})
-
-		It("deployment version is filtered", func() {
-			filteredLabels := statefulset.FilterLabels(labels)
-			Expect(filteredLabels).NotTo(HaveKey(bdv1.LabelDeploymentVersion))
-		})
-	})
-
-})
 
 var _ = Describe("CleanupNonReadyPod", func() {
 	var (

@@ -8,7 +8,7 @@ import (
 
 	"io/ioutil"
 
-	cmd "code.cloudfoundry.org/quarks-operator/cmd/internal"
+	cmd "code.cloudfoundry.org/quarks-statefulset/cmd/internal"
 	"github.com/spf13/cobra/doc"
 )
 

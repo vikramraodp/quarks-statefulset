@@ -10,11 +10,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 
-	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	podutil "code.cloudfoundry.org/quarks-utils/pkg/pod"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
+	"code.cloudfoundry.org/quarks-utils/pkg/util"
 )
 
 // ConfigureStatefulSetForRollout configures a stateful set for canarying and rollout
@@ -37,18 +36,6 @@ func ConfigureStatefulSetForInitialRollout(statefulSet *appsv1.StatefulSet) {
 	}
 	statefulSet.Annotations[AnnotationCanaryRollout] = rolloutStateCanaryUpscale
 	statefulSet.Annotations[AnnotationUpdateStartTime] = strconv.FormatInt(time.Now().Unix(), 10)
-}
-
-// FilterLabels filters out labels, that are not suitable for StatefulSet updates
-func FilterLabels(labels map[string]string) map[string]string {
-
-	statefulSetLabels := make(map[string]string)
-	for key, value := range labels {
-		if key != bdv1.LabelDeploymentVersion {
-			statefulSetLabels[key] = value
-		}
-	}
-	return statefulSetLabels
 }
 
 // CleanupNonReadyPod deletes all pods, that are not ready

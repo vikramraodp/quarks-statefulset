@@ -20,11 +20,11 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
-	cfakes "code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/fakes"
-	"code.cloudfoundry.org/quarks-operator/testing"
 	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
 	gfakes "code.cloudfoundry.org/quarks-secret/pkg/credsgen/fakes"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers"
+	cfakes "code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/fakes"
+	"code.cloudfoundry.org/quarks-statefulset/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	cmdhelper "code.cloudfoundry.org/quarks-utils/testing"
 )
@@ -38,8 +38,6 @@ var _ = Describe("Controllers", func() {
 			for k := range scheme.AllKnownTypes() {
 				kinds = append(kinds, k.Kind)
 			}
-			Expect(kinds).To(ContainElement("BOSHDeployment"))
-			Expect(kinds).To(ContainElement("QuarksSecret"))
 			Expect(kinds).To(ContainElement("QuarksStatefulSet"))
 		})
 	})
@@ -61,7 +59,6 @@ var _ = Describe("Controllers", func() {
 			client = &cfakes.FakeClient{}
 			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
 			restMapper.Add(schema.GroupVersionKind{Group: "", Kind: "Pod", Version: "v1"}, meta.RESTScopeNamespace)
-			restMapper.Add(schema.GroupVersionKind{Group: "quarks.cloudfoundry.org", Kind: "BOSHDeployment", Version: "v1alpha1"}, meta.RESTScopeNamespace)
 
 			manager = &cfakes.FakeManager{}
 
@@ -122,7 +119,7 @@ var _ = Describe("Controllers", func() {
 
 				Expect(afero.Exists(config.Fs, file)).To(BeTrue())
 				Expect(generator.GenerateCertificateCallCount()).To(Equal(2)) // Generate CA and certificate
-				Expect(client.CreateCallCount()).To(Equal(3))                 // Persist secret and the 2 webhook configs (Validating and Mutating)
+				Expect(client.CreateCallCount()).To(Equal(2))                 // Persist secret and the 1 webhook config (Mutating)
 			})
 		})
 
@@ -155,18 +152,18 @@ var _ = Describe("Controllers", func() {
 			It("does not overwrite the existing secret", func() {
 				err := controllers.AddHooks(ctx, config, manager, generator)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(client.CreateCallCount()).To(Equal(2)) // webhook config for Mutation and Validation
+				Expect(client.CreateCallCount()).To(Equal(1)) // webhook config for Mutation and Validation
 			})
 
 			It("generates the webhook configuration", func() {
 				client.CreateCalls(func(context context.Context, object runtime.Object, _ ...crc.CreateOption) error {
-					// We should be getting 2 Create calls - one for the
-					// Validation webhook, one for the Mutating Webhook
+					// We should be getting 1 Create call - for the
+					// Mutating Webhook
 
 					switch config := object.(type) {
 					case *admissionregistration.MutatingWebhookConfiguration:
 						Expect(config.Name).To(Equal("cf-operator-hook-default"))
-						Expect(len(config.Webhooks)).To(Equal(4))
+						Expect(len(config.Webhooks)).To(Equal(2))
 
 						wh := config.Webhooks[0]
 						Expect(wh.Name).To(Equal("mutate-pods.quarks.cloudfoundry.org"))

@@ -13,17 +13,15 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
 
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/operator"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/util/operatorimage"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/operator"
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
 // StartOperator prepares and starts the cf-operator
 func (e *Environment) StartOperator() error {
-	mgr, err := e.setupCFOperator()
+	mgr, err := e.setupOperator()
 	if err != nil {
 		return errors.Wrapf(err, "Setting up CF Operator failed.")
 	}
@@ -41,11 +39,11 @@ func (e *Environment) StartOperator() error {
 	return nil
 }
 
-func (e *Environment) setupCFOperator() (manager.Manager, error) {
+func (e *Environment) setupOperator() (manager.Manager, error) {
 	var err error
-	whh, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_HOST")
+	whh, found := os.LookupEnv("QUARKS_STS_WEBHOOK_SERVICE_HOST")
 	if !found {
-		return nil, errors.Errorf("Please set CF_OPERATOR_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
+		return nil, errors.Errorf("Please set QUARKS_STS_WEBHOOK_SERVICE_HOST to the host/ip the operator runs on and try again")
 	}
 	e.Config.WebhookServerHost = whh
 
@@ -78,27 +76,7 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 
 	e.Config.WebhookServerPort = port
 
-	dockerImageOrg, found := os.LookupEnv("DOCKER_IMAGE_ORG")
-	if !found {
-		dockerImageOrg = "cfcontainerization"
-	}
-
-	dockerImageRepo, found := os.LookupEnv("DOCKER_IMAGE_REPOSITORY")
-	if !found {
-		dockerImageRepo = "cf-operator"
-	}
-
-	dockerImageTag, found := os.LookupEnv("DOCKER_IMAGE_TAG")
-	if !found {
-		return nil, errors.Errorf("required environment variable DOCKER_IMAGE_TAG not set")
-	}
-
-	err = operatorimage.SetupOperatorDockerImage(dockerImageOrg, dockerImageRepo, dockerImageTag, corev1.PullIfNotPresent)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := e.SetupLoggerContext("cf-operator-tests")
+	ctx := e.SetupLoggerContext("qsts-tests")
 
 	mgr, err := operator.NewManager(ctx, e.Config, e.KubeConfig, manager.Options{
 		MetricsBindAddress: "0",
@@ -112,12 +90,12 @@ func (e *Environment) setupCFOperator() (manager.Manager, error) {
 
 func getWebhookServicePort(namespaceCounter int) (int32, error) {
 	port := int64(40000)
-	portString, found := os.LookupEnv("CF_OPERATOR_WEBHOOK_SERVICE_PORT")
+	portString, found := os.LookupEnv("QUARKS_STS_WEBHOOK_SERVICE_PORT")
 	if found {
 		var err error
 		port, err = strconv.ParseInt(portString, 10, 32)
 		if err != nil {
-			return -1, errors.Wrapf(err, "Parsing CF_OPERATOR_WEBHOOK_SERVICE_PORT '%s' failed", portString)
+			return -1, errors.Wrapf(err, "Parsing QUARKS_STS_WEBHOOK_SERVICE_PORT '%s' failed", portString)
 		}
 	}
 	return int32(port) + int32(namespaceCounter), nil

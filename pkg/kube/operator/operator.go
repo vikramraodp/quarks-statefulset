@@ -11,12 +11,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
-	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
 	credsgen "code.cloudfoundry.org/quarks-secret/pkg/credsgen/in_memory_generator"
-	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/crd"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
@@ -71,30 +68,6 @@ func ApplyCRDs(ctx context.Context, config *rest.Config) error {
 	}
 
 	for _, res := range []resource{
-		{
-			bdv1.BOSHDeploymentResourceName,
-			bdv1.BOSHDeploymentResourceKind,
-			bdv1.BOSHDeploymentResourcePlural,
-			bdv1.BOSHDeploymentResourceShortNames,
-			bdv1.SchemeGroupVersion,
-			&bdv1.BOSHDeploymentValidation,
-		},
-		{
-			qjv1a1.QuarksJobResourceName,
-			qjv1a1.QuarksJobResourceKind,
-			qjv1a1.QuarksJobResourcePlural,
-			qjv1a1.QuarksJobResourceShortNames,
-			qjv1a1.SchemeGroupVersion,
-			&qjv1a1.QuarksJobValidation,
-		},
-		{
-			qsv1a1.QuarksSecretResourceName,
-			qsv1a1.QuarksSecretResourceKind,
-			qsv1a1.QuarksSecretResourcePlural,
-			qsv1a1.QuarksSecretResourceShortNames,
-			qsv1a1.SchemeGroupVersion,
-			&qsv1a1.QuarksSecretValidation,
-		},
 		{
 			qstsv1a1.QuarksStatefulSetResourceName,
 			qstsv1a1.QuarksStatefulSetResourceKind,

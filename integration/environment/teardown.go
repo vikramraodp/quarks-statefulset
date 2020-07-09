@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers"
 	"code.cloudfoundry.org/quarks-utils/pkg/webhook"
 	cmdHelper "code.cloudfoundry.org/quarks-utils/testing"
 	utils "code.cloudfoundry.org/quarks-utils/testing/integration"

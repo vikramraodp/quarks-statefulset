@@ -7,22 +7,13 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	qjv1a1 "code.cloudfoundry.org/quarks-job/pkg/kube/apis/quarksjob/v1alpha1"
-	bdv1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/boshdeployment/v1alpha1"
-	qstsv1a1 "code.cloudfoundry.org/quarks-operator/pkg/kube/apis/quarksstatefulset/v1alpha1"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/boshdeployment"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarkslink"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksrestart"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/quarksstatefulset"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/statefulset"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/versionedsecret"
-	"code.cloudfoundry.org/quarks-operator/pkg/kube/controllers/waitservice"
 	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
-	qsv1a1 "code.cloudfoundry.org/quarks-secret/pkg/kube/apis/quarkssecret/v1alpha1"
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/quarksstatefulset"
+	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/webhook"
@@ -39,33 +30,19 @@ const (
 // manager. The manager will set fields on the controllers and start them, when
 // itself is started.
 var addToManagerFuncs = []func(context.Context, *config.Config, manager.Manager) error{
-	boshdeployment.AddDeployment,
-	boshdeployment.AddBPM,
 	quarksstatefulset.AddQuarksStatefulSet,
 	quarksstatefulset.AddQuarksStatefulSetStatus,
 	statefulset.AddStatefulSetRollout,
-	quarksrestart.AddRestart,
 	quarksstatefulset.AddStatefulSetActivePassive,
 }
 
 var addToSchemes = runtime.SchemeBuilder{
-	extv1.AddToScheme,
-	bdv1.AddToScheme,
-	qjv1a1.AddToScheme,
-	qsv1a1.AddToScheme,
 	qstsv1a1.AddToScheme,
-}
-
-var validatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *webhook.OperatorWebhook{
-	boshdeployment.NewBOSHDeploymentValidator,
-	versionedsecret.NewSecretValidator,
 }
 
 var mutatingHookFuncs = []func(*zap.SugaredLogger, *config.Config) *webhook.OperatorWebhook{
 	quarksstatefulset.NewQuarksStatefulSetPodMutator,
 	statefulset.NewStatefulSetRolloutMutator,
-	quarkslink.NewBOSHLinkPodMutator,
-	waitservice.NewWaitServicePodMutator,
 }
 
 // AddToManager adds all Controllers to the Manager
@@ -94,13 +71,7 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 
 	hookServer.Register(HTTPReadyzEndpoint, ordinaryHTTPHandler())
 
-	validatingWebhooks := make([]*webhook.OperatorWebhook, len(validatingHookFuncs))
 	log := ctxlog.ExtractLogger(ctx)
-	for idx, f := range validatingHookFuncs {
-		hook := f(log, config)
-		validatingWebhooks[idx] = hook
-		hookServer.Register(hook.Path, hook.Webhook)
-	}
 
 	mutatingWebhooks := make([]*webhook.OperatorWebhook, len(mutatingHookFuncs))
 	for idx, f := range mutatingHookFuncs {
@@ -113,12 +84,6 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	err := webhookConfig.SetupCertificate(ctx)
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
-	}
-
-	ctxlog.Info(ctx, "Generating validating webhook server configuration")
-	err = webhookConfig.CreateValidationWebhookServerConfig(ctx, validatingWebhooks)
-	if err != nil {
-		return errors.Wrap(err, "generating the validating webhook server configuration")
 	}
 
 	ctxlog.Info(ctx, "Generating mutating webhook server configuration")
