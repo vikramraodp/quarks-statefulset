@@ -1,7 +1,0 @@
-#!/bin/bash
-set -eu
-
- # Send code coverage report to coveralls.io
-gover
-
-goveralls -coverprofile gover.coverprofile -jobId "$BUILD_NUMBER" -service concourse -repotoken "$COVERALLS_TOKEN"
