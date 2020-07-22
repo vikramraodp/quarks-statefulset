@@ -106,7 +106,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			config := a.Object.(*corev1.ConfigMap)
 
-			if skip.SkipReconciles(ctx, mgr.GetClient(), config) {
+			if skip.Reconciles(ctx, mgr.GetClient(), config) {
 				return []reconcile.Request{}
 			}
 
@@ -156,7 +156,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
 			secret := a.Object.(*corev1.Secret)
 
-			if skip.SkipReconciles(ctx, mgr.GetClient(), secret) {
+			if skip.Reconciles(ctx, mgr.GetClient(), secret) {
 				return []reconcile.Request{}
 			}
 
