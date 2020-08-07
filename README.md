@@ -8,15 +8,16 @@
 | Nightly build | [![nightly](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/quarks/pipelines/cf-operator-nightly/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/quarks/pipelines/cf-operator-nightly) |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 
-<img align="right" width="200" height="39" src="https://github.com/cloudfoundry-incubator/cf-operator/raw/master/docs/cf-operator-logo.png">
+<img align="right" width="200" height="39" src="https://github.com/cloudfoundry-incubator/quarks-docs/raw/master/content/en/docs/cf-operator-logo.png">
 
 ----
 
 quarks-statefulset is part of Project Quarks.
 It's used by the [quarks-operator](https://github.com/cloudfoundry-incubator/quarks-operator/)
 
-----
+[See the official documentation for more informations](https://quarks.suse.dev/docs/development/controllers/quarks_statefulset/)
 
+----
 
 * Slack: #quarks-dev on <https://slack.cloudfoundry.org>
 * Backlog: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/2192232)
