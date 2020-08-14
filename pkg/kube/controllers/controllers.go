@@ -10,11 +10,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/credsgen"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 	"code.cloudfoundry.org/quarks-utils/pkg/webhook"
 )
