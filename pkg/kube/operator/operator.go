@@ -11,11 +11,11 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	credsgen "code.cloudfoundry.org/quarks-secret/pkg/credsgen/in_memory_generator"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/crd"
+	credsgen "code.cloudfoundry.org/quarks-utils/pkg/credsgen/in_memory_generator"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
 

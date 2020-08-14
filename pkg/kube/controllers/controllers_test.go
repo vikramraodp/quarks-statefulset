@@ -20,12 +20,12 @@ import (
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"code.cloudfoundry.org/quarks-secret/pkg/credsgen"
-	gfakes "code.cloudfoundry.org/quarks-secret/pkg/credsgen/fakes"
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers"
 	cfakes "code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/fakes"
 	"code.cloudfoundry.org/quarks-statefulset/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
+	"code.cloudfoundry.org/quarks-utils/pkg/credsgen"
+	gfakes "code.cloudfoundry.org/quarks-utils/pkg/credsgen/fakes"
 	cmdhelper "code.cloudfoundry.org/quarks-utils/testing"
 )
 
