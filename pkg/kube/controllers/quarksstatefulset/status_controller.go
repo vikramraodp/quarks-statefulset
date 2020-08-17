@@ -16,6 +16,7 @@ import (
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 )
 
 // AddQuarksStatefulSetStatus creates a new Status controller to update for quarks statefulset.
@@ -32,6 +33,8 @@ func AddQuarksStatefulSetStatus(ctx context.Context, config *config.Config, mgr 
 		return errors.Wrap(err, "Adding QuarksStatefulSetStatus controller to manager failed.")
 	}
 
+	nsPred := monitorednamespace.NewNSPredicate(ctx, mgr.GetClient(), config.MonitoredID)
+
 	// doamins are watched on updates too to get status changes
 	certPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -47,7 +50,7 @@ func AddQuarksStatefulSetStatus(ctx context.Context, config *config.Config, mgr 
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &qstsv1a1.QuarksStatefulSet{},
-	}, certPred)
+	}, nsPred, certPred)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in QuarksStatefulSetStatus controller failed.")
 	}
