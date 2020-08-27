@@ -15,7 +15,7 @@
 quarks-statefulset is part of Project Quarks.
 It's used by the [quarks-operator](https://github.com/cloudfoundry-incubator/quarks-operator/)
 
-[See the official documentation for more informations](https://quarks.suse.dev/docs/development/controllers/quarks_statefulset/)
+[See the official documentation for more informations](https://quarks.suse.dev/docs/quarks-statefulset/)
 
 ----
 
