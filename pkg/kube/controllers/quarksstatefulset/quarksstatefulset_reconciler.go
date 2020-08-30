@@ -270,7 +270,7 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 	}
 	statefulSet.SetAnnotations(util.UnionMaps(statefulSet.GetAnnotations(), annotations))
 
-	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zoneName, qStatefulSet.Spec.Template.Spec.Replicas)
+	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zoneName, qStatefulSet.Spec.Template.Spec.Replicas, qStatefulSet.Spec.InjectReplicasEnv)
 	return statefulSet, nil
 }
 
@@ -316,7 +316,7 @@ func (r *ReconcileQuarksStatefulSet) updateAffinity(statefulSet *appsv1.Stateful
 }
 
 // injectContainerEnv inject AZ info to container envs
-func (r *ReconcileQuarksStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string, replicas *int32) {
+func (r *ReconcileQuarksStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec, zoneIndex int, zoneName string, replicas *int32, injectReplicasEnv *bool) {
 
 	containers := []*corev1.Container{}
 	for i := 0; i < len(podSpec.Containers); i++ {
@@ -337,7 +337,10 @@ func (r *ReconcileQuarksStatefulSet) injectContainerEnv(podSpec *corev1.PodSpec,
 			// Default to zone 1
 			envs = upsertEnvs(envs, EnvCFOperatorAZIndex, "1")
 		}
-		envs = upsertEnvs(envs, EnvReplicas, strconv.Itoa(int(*replicas)))
+
+		if (injectReplicasEnv == nil) || (*injectReplicasEnv) {
+			envs = upsertEnvs(envs, EnvReplicas, strconv.Itoa(int(*replicas)))
+		}
 
 		container.Env = envs
 	}

@@ -91,6 +91,11 @@ func (in *QuarksStatefulSetSpec) DeepCopyInto(out *QuarksStatefulSetSpec) {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
+	if in.InjectReplicasEnv != nil {
+		in, out := &in.InjectReplicasEnv, &out.InjectReplicasEnv
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
