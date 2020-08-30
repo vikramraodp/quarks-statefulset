@@ -51,6 +51,10 @@ type QuarksStatefulSetSpec struct {
 	// Periodic probe for active/passive containers
 	// Only an active container will process request from a service
 	ActivePassiveProbes map[string]corev1.Probe `json:"activePassiveProbes,omitempty"`
+
+	// Determines whether the REPLICAS env var should be injected into pod containers
+	// By default, true.
+	InjectReplicasEnv *bool `json:"injectReplicasEnv,omitempty"`
 }
 
 // QuarksStatefulSetStatus defines the observed state of QuarksStatefulSet
