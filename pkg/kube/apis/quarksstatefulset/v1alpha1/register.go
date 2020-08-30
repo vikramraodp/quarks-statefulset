@@ -54,6 +54,10 @@ var (
 							Description:            "Defines probes to determine active/passive component instances",
 							XPreserveUnknownFields: pointers.Bool(true),
 						},
+						"injectReplicasEnv": {
+							Type:        "boolean",
+							Description: "Determines if the REPLICAS env var is injected into pod containers.",
+						},
 						"zoneNodeLabel": {
 							Type:        "string",
 							Description: "Indicates the node label that a node locates",
