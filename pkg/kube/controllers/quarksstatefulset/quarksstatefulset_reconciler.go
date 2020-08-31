@@ -257,7 +257,6 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 	labels[qstsv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
 	labels[qstsv1a1.LabelQStsName] = statefulSetNamePrefix
 
-	annotations[qstsv1a1.AnnotationVersion] = strconv.Itoa(version)
 	annotations[statefulset.AnnotationCanaryRolloutEnabled] = "true"
 
 	// Set updated properties
@@ -268,6 +267,8 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 	statefulSet.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: labels,
 	}
+
+	annotations[qstsv1a1.AnnotationVersion] = strconv.Itoa(version)
 	statefulSet.SetAnnotations(util.UnionMaps(statefulSet.GetAnnotations(), annotations))
 
 	r.injectContainerEnv(&statefulSet.Spec.Template.Spec, zoneIndex, zoneName, qStatefulSet.Spec.Template.Spec.Replicas, qStatefulSet.Spec.InjectReplicasEnv)
