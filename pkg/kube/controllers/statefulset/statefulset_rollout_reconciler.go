@@ -140,9 +140,13 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		if !ready {
 			break
 		}
+
 		(*statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)--
+		resultWithRetrigger.Requeue = true
 		dirty = true
 		newStatus = rolloutStateRollout
+		ctxlog.Debugf(ctx, "Statefulset rollout for '%s/%s' has partition %d, will reconcile in %d ms", statefulSet.Namespace, statefulSet.Name, *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition, resultWithRetrigger.RequeueAfter*time.Millisecond)
+
 	case rolloutStatePending:
 		if statefulSet.Status.Replicas < *statefulSet.Spec.Replicas {
 			newStatus = rolloutStateCanaryUpscale
@@ -155,6 +159,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 		}
 	}
 	statusChanged := newStatus != statefulSet.Annotations[AnnotationCanaryRollout]
+	ctxlog.Debugf(ctx, "Statefulset rollout for '%s/%s' is in status %s", statefulSet.Namespace, statefulSet.Name, newStatus)
 	if statusChanged {
 		statefulSet.Annotations[AnnotationCanaryRollout] = newStatus
 		dirty = true
@@ -235,7 +240,7 @@ func (r *ReconcileStatefulSetRollout) updateStatefulSet(ctx context.Context, sta
 		}
 		return err
 	}
-	ctxlog.Debugf(ctx, "StatefulSet %s/%s updated to state Done ", statefulSet.Namespace, statefulSet.Name)
+	ctxlog.Debugf(ctx, "StatefulSet state %s/%s updated", statefulSet.Namespace, statefulSet.Name)
 	return nil
 }
 
