@@ -110,7 +110,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForQuarksStatefulSet, config, false)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), config, false)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for configMap '%s/%s': %v", config.Namespace, config.Name, err)
 			}
@@ -131,7 +131,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 
 			o := e.Object.(*corev1.Secret)
 			shouldProcessEvent := vss.IsVersionedSecret(*o)
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForQuarksStatefulSet, o, true)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), o, true)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", o.Namespace, o.Name, err)
 			}
@@ -160,7 +160,7 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 				return []reconcile.Request{}
 			}
 
-			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), reference.ReconcileForQuarksStatefulSet, secret, false)
+			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), secret, false)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", secret.Namespace, secret.Name, err)
 			}
