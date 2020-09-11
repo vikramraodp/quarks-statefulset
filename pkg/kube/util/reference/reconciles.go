@@ -12,24 +12,9 @@ import (
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis"
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	log "code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
+	"code.cloudfoundry.org/quarks-utils/pkg/podref"
 	vss "code.cloudfoundry.org/quarks-utils/pkg/versionedsecretstore"
 )
-
-// ReconcileType lists all the types of reconciliations we can return,
-// for controllers that have types that can reference ConfigMaps or Secrets
-type ReconcileType int
-
-const (
-	// ReconcileForQuarksStatefulSet represents the QuarksStatefulSet CRD
-	ReconcileForQuarksStatefulSet = iota
-	// ReconcileForPod represents the StatefulSet Kube Resource
-)
-
-func (r ReconcileType) String() string {
-	return [...]string{
-		"QuarksStatefulSet",
-	}[r]
-}
 
 // GetReconciles returns reconciliation requests for QuarksStatefulSets
 // that reference an object. The object can be a ConfigMap or a Secret
@@ -43,9 +28,9 @@ func GetReconciles(ctx context.Context, client crc.Client, object apis.Object, v
 
 		switch object := object.(type) {
 		case *corev1.ConfigMap:
-			objectReferences = getConfMapRefFromPod(parent.Spec.Template.Spec.Template.Spec)
+			objectReferences = podref.GetConfMapRefFromPod(parent.Spec.Template.Spec.Template.Spec)
 		case *corev1.Secret:
-			objectReferences = getSecretRefFromPodSpec(parent.Spec.Template.Spec.Template.Spec)
+			objectReferences = podref.GetSecretRefFromPodSpec(parent.Spec.Template.Spec.Template.Spec)
 			versionedSecret = vss.IsVersionedSecret(*object)
 		default:
 			return false, errors.New("can't get reconciles for unknown object type; supported types are ConfigMap and Secret")
