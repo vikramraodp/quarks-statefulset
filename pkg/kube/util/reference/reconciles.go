@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -24,42 +23,34 @@ const (
 	// ReconcileForQuarksStatefulSet represents the QuarksStatefulSet CRD
 	ReconcileForQuarksStatefulSet = iota
 	// ReconcileForPod represents the StatefulSet Kube Resource
-	ReconcileForPod
 )
 
 func (r ReconcileType) String() string {
 	return [...]string{
 		"QuarksStatefulSet",
-		"Pod",
 	}[r]
 }
 
-// GetReconciles returns reconciliation requests for the BOSHDeployments or QuarksStatefulSets
+// GetReconciles returns reconciliation requests for QuarksStatefulSets
 // that reference an object. The object can be a ConfigMap or a Secret
-func GetReconciles(ctx context.Context, client crc.Client, reconcileType ReconcileType, object apis.Object, versionCheck bool) ([]reconcile.Request, error) {
-	objReferencedBy := func(parent interface{}) (bool, error) {
+func GetReconciles(ctx context.Context, client crc.Client, object apis.Object, versionCheck bool) ([]reconcile.Request, error) {
+	objReferencedBy := func(parent qstsv1a1.QuarksStatefulSet) (bool, error) {
 		var (
 			objectReferences map[string]bool
-			err              error
 			name             string
 			versionedSecret  bool
 		)
 
 		switch object := object.(type) {
 		case *corev1.ConfigMap:
-			objectReferences, err = GetConfigMapsReferencedBy(parent)
-			name = object.Name
+			objectReferences = getConfMapRefFromPod(parent.Spec.Template.Spec.Template.Spec)
 		case *corev1.Secret:
-			objectReferences, err = GetSecretsReferencedBy(ctx, client, parent)
-			name = object.Name
+			objectReferences = getSecretRefFromPodSpec(parent.Spec.Template.Spec.Template.Spec)
 			versionedSecret = vss.IsVersionedSecret(*object)
 		default:
 			return false, errors.New("can't get reconciles for unknown object type; supported types are ConfigMap and Secret")
 		}
-
-		if err != nil {
-			return false, errors.Wrap(err, "error listing references")
-		}
+		name = object.GetName()
 
 		if versionedSecret {
 			keys := make([]string, len(objectReferences))
@@ -83,74 +74,30 @@ func GetReconciles(ctx context.Context, client crc.Client, reconcileType Reconci
 	namespace := object.GetNamespace()
 	result := []reconcile.Request{}
 
-	log.Debugf(ctx, "Listing '%s' for '%s/%s'", reconcileType, namespace, object.GetName())
-	switch reconcileType {
-	case ReconcileForQuarksStatefulSet:
-		quarksStatefulSets, err := listQuarksStatefulSets(ctx, client, namespace)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to list QuarksStatefulSets for ConfigMap reconciles")
-		}
-
-		for _, quarksStatefulSet := range quarksStatefulSets.Items {
-			if !quarksStatefulSet.Spec.UpdateOnConfigChange {
-				continue
-			}
-
-			isRef, err := objReferencedBy(quarksStatefulSet)
-			if err != nil {
-				return nil, err
-			}
-
-			if isRef {
-				result = append(result, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      quarksStatefulSet.Name,
-						Namespace: quarksStatefulSet.Namespace,
-					}})
-			}
-		}
-	case ReconcileForPod:
-		pods, err := listPods(ctx, client, namespace)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to list Pods for ConfigMap reconciles")
-		}
-
-		for _, pod := range pods.Items {
-			isRef, err := objReferencedBy(pod)
-			if err != nil {
-				return nil, err
-			}
-
-			if isRef {
-				result = append(result, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Name:      pod.Name,
-						Namespace: pod.Namespace,
-					}})
-			}
-		}
-	default:
-		return nil, fmt.Errorf("unknown reconcile type %s", reconcileType.String())
+	log.Debugf(ctx, "Searching 'qsts' for references to '%s/%s'", namespace, object.GetName())
+	list := &qstsv1a1.QuarksStatefulSetList{}
+	err := client.List(ctx, list, crc.InNamespace(namespace))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list QuarksStatefulSets for ConfigMap reconciles")
 	}
 
-	return result, nil
-}
+	for _, quarksStatefulSet := range list.Items {
+		if !quarksStatefulSet.Spec.UpdateOnConfigChange {
+			continue
+		}
 
-func listQuarksStatefulSets(ctx context.Context, client crc.Client, namespace string) (*qstsv1a1.QuarksStatefulSetList, error) {
-	result := &qstsv1a1.QuarksStatefulSetList{}
-	err := client.List(ctx, result, crc.InNamespace(namespace))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list QuarksStatefulSets")
-	}
+		isRef, err := objReferencedBy(quarksStatefulSet)
+		if err != nil {
+			return nil, err
+		}
 
-	return result, nil
-}
-
-func listPods(ctx context.Context, client crc.Client, namespace string) (*corev1.PodList, error) {
-	result := &corev1.PodList{}
-	err := client.List(ctx, result, crc.InNamespace(namespace))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list Pods")
+		if isRef {
+			result = append(result, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      quarksStatefulSet.Name,
+					Namespace: quarksStatefulSet.Namespace,
+				}})
+		}
 	}
 
 	return result, nil
