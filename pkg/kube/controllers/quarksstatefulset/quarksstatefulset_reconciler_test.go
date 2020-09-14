@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,6 +41,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 		request    reconcile.Request
 		ctx        context.Context
 		log        *zap.SugaredLogger
+		logs       *observer.ObservedLogs
 		config     *cfcfg.Config
 	)
 
@@ -50,7 +52,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 
 		request = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 		config = &cfcfg.Config{CtxTimeOut: 10 * time.Second}
-		_, log = helper.NewTestLogger()
+		logs, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)
 	})
 
@@ -115,11 +117,44 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						},
 					},
 				}
+				lastReconcileTime := metav1.NewTime(metav1.Now().Add(qstscontroller.ReconcileSkipDuration))
+				desiredQStatefulSet.Status.LastReconcile = &lastReconcileTime
 
 				client = fake.NewFakeClient(
 					desiredQStatefulSet,
 				)
 				manager.GetClientReturns(client)
+			})
+
+			When("meltdown is in place", func() {
+				BeforeEach(func() {
+					desiredQStatefulSet.Status.LastReconcile = nil
+					client = fake.NewFakeClient(
+						desiredQStatefulSet,
+					)
+					manager.GetClientReturns(client)
+				})
+
+				It("should go into meltdown", func() {
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result.RequeueAfter).To(Equal(qstscontroller.ReconcileSkipDuration))
+					Expect(logs.FilterMessageSnippet("Meltdown started for").Len()).To(Equal(1))
+				})
+
+				It("should stay in meltown when multiple reconciles happen", func() {
+					result, err := reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result.RequeueAfter).To(Equal(qstscontroller.ReconcileSkipDuration))
+					Expect(logs.FilterMessageSnippet("Meltdown started for").Len()).To(Equal(1))
+					now := metav1.Now()
+					desiredQStatefulSet.Status.LastReconcile = &now
+
+					result, err = reconciler.Reconcile(request)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(result.Requeue).To(BeFalse())
+					Expect(logs.FilterMessageSnippet("Meltdown in progress").Len()).To(Equal(1))
+				})
 			})
 
 			It("creates new statefulSet and continues to reconcile when new version is not available", func() {
@@ -462,6 +497,8 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						},
 					},
 				}
+				lastReconcileTime := metav1.NewTime(metav1.Now().Add(qstscontroller.ReconcileSkipDuration))
+				desiredQStatefulSet.Status.LastReconcile = &lastReconcileTime
 
 				client = fake.NewFakeClient(
 					desiredQStatefulSet,
