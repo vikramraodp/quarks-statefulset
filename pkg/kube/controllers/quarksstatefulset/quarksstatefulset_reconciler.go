@@ -47,6 +47,9 @@ const (
 // Check that ReconcileQuarksStatefulSet implements the reconcile.Reconciler interface
 var _ reconcile.Reconciler = &ReconcileQuarksStatefulSet{}
 
+// ReconcileSkipDuration is the duration of merging consecutive triggers.
+const ReconcileSkipDuration = 10 * time.Second
+
 type setReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // NewReconciler returns a new reconcile.Reconciler for QuarksStatefulSets
@@ -106,10 +109,24 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "IncrementVersionError").Error(ctx, "Could not update labels of versioned secrets in QuarksStatefulSet '", request.NamespacedName, "': ", err)
 	}
 
-	if meltdown.NewWindow(r.config.MeltdownDuration, qStatefulSet.Status.LastReconcile).Contains(time.Now()) {
-		ctxlog.WithEvent(qStatefulSet, "Meltdown").Debugf(ctx, "Resource '%s' is in meltdown, requeue reconcile after %s", request.NamespacedName, r.config.MeltdownRequeueAfter)
-		return reconcile.Result{RequeueAfter: r.config.MeltdownRequeueAfter}, nil
+	if qStatefulSet.Status.LastReconcile == nil {
+		now := metav1.Now()
+		qStatefulSet.Status.LastReconcile = &now
+		err = r.client.Status().Update(ctx, qStatefulSet)
+		if err != nil {
+			return reconcile.Result{},
+				ctxlog.WithEvent(qStatefulSet, "UpdateError").Errorf(ctx, "failed to update reconcile timestamp on bdpl '%s' (%v): %s", request.NamespacedName, qStatefulSet.ResourceVersion, err)
+		}
+		ctxlog.Infof(ctx, "Meltdown started for '%s'", request.NamespacedName)
+
+		return reconcile.Result{RequeueAfter: ReconcileSkipDuration}, nil
 	}
+
+	if meltdown.NewWindow(ReconcileSkipDuration, qStatefulSet.Status.LastReconcile).Contains(time.Now()) {
+		ctxlog.Infof(ctx, "Meltdown in progress for '%s'", request.NamespacedName)
+		return reconcile.Result{}, nil
+	}
+	ctxlog.Infof(ctx, "Meltdown ended for '%s'", request.NamespacedName)
 
 	// Calculate the desired statefulSets
 	desiredStatefulSets, err := r.calculateDesiredStatefulSets(ctx, qStatefulSet)
@@ -132,14 +149,6 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(request reconcile.Request) (recon
 
 		// Reset ready status if we create
 		qStatefulSet.Status.Ready = false
-	}
-
-	now := metav1.Now()
-	qStatefulSet.Status.LastReconcile = &now
-	err = r.client.Status().Update(ctx, qStatefulSet)
-	if err != nil {
-		ctxlog.WithEvent(qStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update reconcile timestamp on QuarksStatefulSet '%s' (%v): %s", request.NamespacedName, qStatefulSet.ResourceVersion, err)
-		return reconcile.Result{Requeue: false}, nil
 	}
 
 	return reconcile.Result{}, nil
