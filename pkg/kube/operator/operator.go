@@ -7,7 +7,6 @@ import (
 
 	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	extv1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -18,15 +17,6 @@ import (
 	credsgen "code.cloudfoundry.org/quarks-utils/pkg/credsgen/in_memory_generator"
 	"code.cloudfoundry.org/quarks-utils/pkg/ctxlog"
 )
-
-type resource struct {
-	name         string
-	kind         string
-	plural       string
-	shortNames   []string
-	groupVersion schema.GroupVersion
-	validation   *extv1.CustomResourceValidation
-}
 
 // NewManager adds schemes, controllers and starts the manager
 func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, options manager.Options) (manager.Manager, error) {
@@ -62,38 +52,31 @@ func NewManager(ctx context.Context, config *config.Config, cfg *rest.Config, op
 
 // ApplyCRDs applies a collection of CRDs into the cluster
 func ApplyCRDs(ctx context.Context, config *rest.Config) error {
-	exClient, err := extv1client.NewForConfig(config)
+	client, err := extv1client.NewForConfig(config)
 	if err != nil {
 		return errors.Wrap(err, "Could not get kube client")
 	}
 
-	for _, res := range []resource{
-		{
-			qstsv1a1.QuarksStatefulSetResourceName,
-			qstsv1a1.QuarksStatefulSetResourceKind,
-			qstsv1a1.QuarksStatefulSetResourcePlural,
-			qstsv1a1.QuarksStatefulSetResourceShortNames,
-			qstsv1a1.SchemeGroupVersion,
-			&qstsv1a1.QuarksStatefulSetValidation,
+	b := crd.New(
+		qstsv1a1.QuarksStatefulSetResourceName,
+		extv1.CustomResourceDefinitionNames{
+			Kind:       qstsv1a1.QuarksStatefulSetResourceKind,
+			Plural:     qstsv1a1.QuarksStatefulSetResourcePlural,
+			ShortNames: qstsv1a1.QuarksStatefulSetResourceShortNames,
 		},
-	} {
-		err = crd.ApplyCRD(
-			ctx,
-			exClient,
-			res.name,
-			res.kind,
-			res.plural,
-			res.shortNames,
-			res.groupVersion,
-			res.validation,
-		)
-		if err != nil {
-			return errors.Wrapf(err, "failed to apply CRD '%s'", res.name)
-		}
-		err = crd.WaitForCRDReady(ctx, exClient, res.name)
-		if err != nil {
-			return errors.Wrapf(err, "failed to wait for CRD '%s' ready", res.name)
-		}
+		qstsv1a1.SchemeGroupVersion,
+	)
+
+	err = b.WithValidation(&qstsv1a1.QuarksStatefulSetValidation).
+		WithAdditionalPrinterColumns(qstsv1a1.QuarksStatefulSetAdditionalPrinterColumns).
+		Build().
+		Apply(ctx, client)
+	if err != nil {
+		return errors.Wrapf(err, "failed to apply CRD '%s'", qstsv1a1.QuarksStatefulSetResourceName)
+	}
+	err = crd.WaitForCRDReady(ctx, client, qstsv1a1.QuarksStatefulSetResourceName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to wait for CRD '%s' ready", qstsv1a1.QuarksStatefulSetResourceName)
 	}
 
 	return nil
