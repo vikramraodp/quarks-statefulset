@@ -91,6 +91,16 @@ var (
 		},
 	}
 
+	// QuarksStatefulSetAdditionalPrinterColumns are used by `kubectl get`
+	QuarksStatefulSetAdditionalPrinterColumns = []extv1.CustomResourceColumnDefinition{
+		{
+			Name:        "ready",
+			Type:        "boolean",
+			Description: "",
+			JSONPath:    ".status.ready",
+		},
+	}
+
 	// QuarksStatefulSetResourceName is the resource name of QuarksStatefulSet
 	QuarksStatefulSetResourceName = fmt.Sprintf("%s.%s", QuarksStatefulSetResourcePlural, apis.GroupName)
 
