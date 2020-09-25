@@ -1,13 +1,11 @@
 module code.cloudfoundry.org/quarks-statefulset
 
 require (
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200911114130-7b6fe4c269e6
+	code.cloudfoundry.org/quarks-utils v0.0.0-20200925090848-029325981b63
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
@@ -15,18 +13,17 @@ require (
 	github.com/onsi/ginkgo v1.13.0
 	github.com/onsi/gomega v1.10.1
 	github.com/pkg/errors v0.8.1
-	github.com/prometheus/procfs v0.0.8 // indirect
 	github.com/spf13/afero v1.3.0
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/viper v1.7.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/tools v0.0.0-20200708183856-df98bc6d456c // indirect
 	gomodules.xyz/jsonpatch/v2 v2.0.1
-	k8s.io/api v0.18.5
-	k8s.io/apiextensions-apiserver v0.18.5
-	k8s.io/apimachinery v0.18.5
-	k8s.io/client-go v0.18.5
-	sigs.k8s.io/controller-runtime v0.6.0
+	k8s.io/api v0.18.9
+	k8s.io/apiextensions-apiserver v0.18.9
+	k8s.io/apimachinery v0.18.9
+	k8s.io/client-go v0.18.9
+	sigs.k8s.io/controller-runtime v0.6.3
 )
 
 go 1.14
