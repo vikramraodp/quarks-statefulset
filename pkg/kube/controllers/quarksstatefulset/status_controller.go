@@ -37,10 +37,10 @@ func AddQuarksStatefulSetStatus(ctx context.Context, config *config.Config, mgr 
 
 	// doamins are watched on updates too to get status changes
 	certPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
+		CreateFunc: func(e event.CreateEvent) bool {
 			return true
 		},
-		CreateFunc: func(e event.CreateEvent) bool {
+		UpdateFunc: func(e event.UpdateEvent) bool {
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
