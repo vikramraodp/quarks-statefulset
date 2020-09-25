@@ -50,11 +50,12 @@ type ReconcileStatefulSetActivePassive struct {
 	restConfig *rest.Config
 }
 
-// Reconcile reads the state of the cluster for a QuarksStatefulSet object
-// and makes changes based on the state read and what is in the QuarksStatefulSet.Spec
+// Reconcile manages the active labels on pods that are part of a statefulset,
+// that is managed by the QuarksStatefulSet under reconciliation. The active
+// label is based on the success of running probeCmd inside a specific
+// container.
 // Note:
-// The Reconcile Loop will always requeue the request stop before under completition. For this specific
-// loop, the requeue will happen after the ActivePassiveProbe PeriodSeconds is reached.
+// Reconcile will always requeue on success after ActivePassiveProbe.PeriodSeconds have passed.
 func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	qSts := &qstsv1a1.QuarksStatefulSet{}
 
