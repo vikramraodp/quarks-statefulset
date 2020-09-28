@@ -208,7 +208,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 			reconcile(r, emulation.Update(WithReplicas(5)))
 			Expect(client.UpdateCallCount()).To(Equal(1))
 			Expect(emulation.statefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "CanaryUpscale"))
-			Expect(int(*emulation.statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)).To(Equal(4))
+			Expect(int(*emulation.statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)).To(Equal(3))
 
 			By("pod 4 is started")
 			r = reconciler()
@@ -246,7 +246,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 			}
 			Expect(client.UpdateCallCount()).To(Equal(1))
 			Expect(emulation.statefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "CanaryUpscale"))
-			Expect(int(*emulation.statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)).To(Equal(4))
+			Expect(int(*emulation.statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)).To(Equal(3))
 
 			By("Do update")
 			r = reconciler()

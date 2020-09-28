@@ -27,10 +27,11 @@ var _ = Describe("QuarksStatefulSet", func() {
 		wrongQuarksStatefulSet              qstsv1a1.QuarksStatefulSet
 		wrongQuarksStatefulSetWith2Replicas *qstsv1a1.QuarksStatefulSet
 		ownedReferencesQuarksStatefulSet    qstsv1a1.QuarksStatefulSet
+		qStsName                            string
 	)
 
 	BeforeEach(func() {
-		qStsName := fmt.Sprintf("test-qsts-%s", helper.RandString(5))
+		qStsName = fmt.Sprintf("test-qsts-%s", helper.RandString(5))
 		quarksStatefulSet = env.DefaultQuarksStatefulSet(qStsName)
 
 		quarksStatefulSetWith2Replicas = quarksStatefulSet.DeepCopy()
@@ -233,61 +234,233 @@ var _ = Describe("QuarksStatefulSet", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Rollout should stop on failure and recover when fixed", func() {
-			By("Creating an QuarksStatefulSet")
-			qSts, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, *quarksStatefulSetWith2Replicas)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(qSts).NotTo(Equal(nil))
-			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+		Context("Rollout Recovery", func() {
+			var (
+				brokenQuarksStatefulSet *qstsv1a1.QuarksStatefulSet
+				tearDowns               []machine.TearDownFunc
+			)
 
-			err = env.WaitForPods(env.Namespace, "testpod=yes")
-			Expect(err).NotTo(HaveOccurred())
-
-			err = waitForState(env.Namespace, qSts.Name, "Done")
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Break the QuarksStatefulSet")
-			qSts, err = env.GetQuarksStatefulSet(env.Namespace, qSts.Name)
-			Expect(err).NotTo(HaveOccurred())
-			brokenQuarksStatefulSet := qSts.DeepCopy()
-			brokenQuarksStatefulSet.Spec.Template = env.WrongStatefulSet(brokenQuarksStatefulSet.Name)
-			brokenQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
-			qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *brokenQuarksStatefulSet)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
-			Expect(err).NotTo(HaveOccurred())
-
-			err = waitForState(env.Namespace, qSts.Name, "Failed")
-			Expect(err).NotTo(HaveOccurred())
-
-			running, err := env.PodsRunning(env.Namespace, "testpod=yes")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(running).To(BeTrue())
-
-			By("Repair the QuarksStatefulSet")
-			qSts, err = env.GetQuarksStatefulSet(env.Namespace, qSts.Name)
-			Expect(err).NotTo(HaveOccurred())
-			repairedQuarksStatefulSet := qSts.DeepCopy()
-			repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
-			repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
-			qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = waitForState(env.Namespace, qSts.Name, "Done")
-			Expect(err).NotTo(HaveOccurred())
-
-			count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
-				return pod.IsPodReady(&p)
+			AfterEach(func() {
+				Expect(env.TearDownAll(tearDowns)).To(Succeed())
 			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(count).To(Equal(2))
+
+			Context("Rollout recovery on a initial failed deployment", func() {
+				BeforeEach(func() {
+					By("Creating a broken QuarksStatefulSet")
+					brokenQuarksStatefulSet = quarksStatefulSetWith2Replicas
+					brokenQuarksStatefulSet.Spec.Template = env.WrongStatefulSet(brokenQuarksStatefulSet.Name)
+					brokenQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+					qSts, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, *brokenQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(qSts).NotTo(Equal(nil))
+					tearDowns = append(tearDowns, tearDown)
+
+					err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					err = waitForState(env.Namespace, qSts.Name, "Failed")
+					Expect(err).NotTo(HaveOccurred())
+					running, err := env.PodsRunning(env.Namespace, "testpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(running).To(BeFalse())
+				})
+
+				It("Rollout should recover when there is a broken initial deployment", func() {
+					By("Repairing the QuarksStatefulSet")
+					qSts, err := env.GetQuarksStatefulSet(env.Namespace, qStsName)
+					Expect(err).NotTo(HaveOccurred())
+					repairedQuarksStatefulSet := qSts.DeepCopy()
+					repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
+					repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = waitForState(env.Namespace, qSts.Name, "Done")
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(func() bool {
+						count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
+							return pod.IsPodReady(&p)
+						})
+						Expect(err).NotTo(HaveOccurred())
+						return count == 2
+					}, 60*time.Second).Should(Equal(true))
+				})
+
+				It("Rollout should recover when a broken initial deployment with increasing replicas", func() {
+					By("Repairing the QuarksStatefulSet")
+					qSts, err := env.GetQuarksStatefulSet(env.Namespace, qStsName)
+					Expect(err).NotTo(HaveOccurred())
+					repairedQuarksStatefulSet := qSts.DeepCopy()
+					repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
+					repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(5)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = waitForState(env.Namespace, qSts.Name, "Done")
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(func() bool {
+						count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
+							return pod.IsPodReady(&p)
+						})
+						Expect(err).NotTo(HaveOccurred())
+						return count == 5
+					}, 60*time.Second).Should(Equal(true))
+				})
+
+				It("Rollout should recover when a broken initial deployment with decreasing replicas", func() {
+					By("Repairing the QuarksStatefulSet")
+					qSts, err := env.GetQuarksStatefulSet(env.Namespace, qStsName)
+					Expect(err).NotTo(HaveOccurred())
+					repairedQuarksStatefulSet := qSts.DeepCopy()
+					repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
+					repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(3)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = waitForState(env.Namespace, qSts.Name, "Done")
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(func() bool {
+						count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
+							return pod.IsPodReady(&p)
+						})
+						Expect(err).NotTo(HaveOccurred())
+						return count == 3
+					}, 60*time.Second).Should(Equal(true))
+				})
+			})
+
+			Context("Rollout recovery when there is non initial failed deployment", func() {
+				BeforeEach(func() {
+					By("Creating an QuarksStatefulSet")
+					qSts, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, *quarksStatefulSetWith2Replicas)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(qSts).NotTo(Equal(nil))
+					tearDowns = append(tearDowns, tearDown)
+
+					err = env.WaitForPods(env.Namespace, "testpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+
+					err = waitForState(env.Namespace, qSts.Name, "Done")
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("Rollout should stop on failure and recover when fixed", func() {
+					By("Breaking the QuarksStatefulSet")
+					qSts, err := env.GetQuarksStatefulSet(env.Namespace, qStsName)
+					Expect(err).NotTo(HaveOccurred())
+					brokenQuarksStatefulSet := qSts.DeepCopy()
+					brokenQuarksStatefulSet.Spec.Template = env.WrongStatefulSet(brokenQuarksStatefulSet.Name)
+					brokenQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *brokenQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					err = waitForState(env.Namespace, qSts.Name, "Failed")
+					Expect(err).NotTo(HaveOccurred())
+					running, err := env.PodsRunning(env.Namespace, "testpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(running).To(BeTrue())
+
+					By("Repairing the QuarksStatefulSet")
+					qSts, err = env.GetQuarksStatefulSet(env.Namespace, qSts.Name)
+					Expect(err).NotTo(HaveOccurred())
+					repairedQuarksStatefulSet := qSts.DeepCopy()
+					repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
+					repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = waitForState(env.Namespace, qSts.Name, "Done")
+					Expect(err).NotTo(HaveOccurred())
+					count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
+						return pod.IsPodReady(&p)
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(count).To(Equal(2))
+				})
+
+				It("Rollout should stop on failure and recover when fixed along with increasing replicas", func() {
+					By("Break the QuarksStatefulSet along with increasing replicas")
+					qSts, err := env.GetQuarksStatefulSet(env.Namespace, qStsName)
+					Expect(err).NotTo(HaveOccurred())
+					brokenQuarksStatefulSet := qSts.DeepCopy()
+					brokenQuarksStatefulSet.Spec.Template = env.WrongStatefulSet(brokenQuarksStatefulSet.Name)
+					brokenQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(5)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *brokenQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					err = waitForState(env.Namespace, qSts.Name, "Failed")
+					Expect(err).NotTo(HaveOccurred())
+					running, err := env.PodsRunning(env.Namespace, "testpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(running).To(BeTrue())
+
+					By("Repairing the QuarksStatefulSet")
+					qSts, err = env.GetQuarksStatefulSet(env.Namespace, qStsName)
+					Expect(err).NotTo(HaveOccurred())
+					repairedQuarksStatefulSet := qSts.DeepCopy()
+					repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
+					repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(5)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = waitForState(env.Namespace, qSts.Name, "Done")
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(func() bool {
+						count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
+							return pod.IsPodReady(&p)
+						})
+						Expect(err).NotTo(HaveOccurred())
+						return count == 5
+					}, 60*time.Second).Should(Equal(true))
+				})
+
+				It("Rollout should stop on failure and recover when fixed along with decreasing replicas", func() {
+					By("Break the QuarksStatefulSet along with increasing replicas")
+					qSts, err := env.GetQuarksStatefulSet(env.Namespace, qStsName)
+					Expect(err).NotTo(HaveOccurred())
+					brokenQuarksStatefulSet := qSts.DeepCopy()
+					brokenQuarksStatefulSet.Spec.Template = env.WrongStatefulSet(brokenQuarksStatefulSet.Name)
+					brokenQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *brokenQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = env.WaitForPodFailures(env.Namespace, "wrongpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					err = waitForState(env.Namespace, qSts.Name, "Failed")
+					Expect(err).NotTo(HaveOccurred())
+					running, err := env.PodsRunning(env.Namespace, "testpod=yes")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(running).To(BeTrue())
+
+					By("Repairing the QuarksStatefulSet")
+					qSts, err = env.GetQuarksStatefulSet(env.Namespace, qSts.Name)
+					Expect(err).NotTo(HaveOccurred())
+					repairedQuarksStatefulSet := qSts.DeepCopy()
+					repairedQuarksStatefulSet.Spec.Template = env.DefaultStatefulSet(brokenQuarksStatefulSet.Name)
+					repairedQuarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(2)
+					qSts, _, err = env.UpdateQuarksStatefulSet(env.Namespace, *repairedQuarksStatefulSet)
+					Expect(err).NotTo(HaveOccurred())
+
+					err = waitForState(env.Namespace, qSts.Name, "Done")
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(func() bool {
+						count, err := env.PodCount(env.Namespace, "testpod=yes", func(p v1.Pod) bool {
+							return pod.IsPodReady(&p)
+						})
+						Expect(err).NotTo(HaveOccurred())
+						return count == 2
+					}, 60*time.Second).Should(Equal(true))
+				})
+			})
 		})
 	})
 })
 
 func waitForState(namespace string, name string, state string) error {
-	return wait.PollImmediate(5*time.Second, 35*time.Second, func() (bool, error) {
+	return wait.PollImmediate(5*time.Second, 120*time.Second, func() (bool, error) {
 		sts, err := env.GetStatefulSet(namespace, name)
 		if err != nil {
 			return false, err
