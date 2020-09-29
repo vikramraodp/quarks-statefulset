@@ -16,19 +16,20 @@ import (
 
 // GetMaxStatefulSetVersion returns the max version statefulSet
 // of the quarksStatefulSet.
-func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulSet *qstsv1a1.QuarksStatefulSet) (*appsv1.StatefulSet, int, error) {
+func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulSet *qstsv1a1.QuarksStatefulSet) ([]*appsv1.StatefulSet, int, error) {
 	// Default response is an empty StatefulSet with version '0' and an empty signature
-	result := &appsv1.StatefulSet{
+	defaultSts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				qstsv1a1.AnnotationVersion: "0",
 			},
 		},
 	}
+	result := []*appsv1.StatefulSet{}
 	maxVersion := 0
 
 	if qStatefulSet.Namespace == "" {
-		return result, maxVersion, nil
+		return []*appsv1.StatefulSet{defaultSts}, maxVersion, nil
 	}
 
 	statefulSets, err := listStatefulSetsFromInformer(ctx, client, qStatefulSet)
@@ -36,7 +37,8 @@ func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulS
 		return nil, 0, err
 	}
 
-	for _, ss := range statefulSets {
+	for i, _ := range statefulSets {
+		ss := statefulSets[i]
 		strVersion := ss.Annotations[qstsv1a1.AnnotationVersion]
 		if strVersion == "" {
 			return nil, 0, errors.Errorf("The statefulset '%s/%s' does not have the annotation(%s), a version could not be retrieved.", ss.Namespace, ss.Name, qstsv1a1.AnnotationVersion)
@@ -47,13 +49,24 @@ func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulS
 			return nil, 0, err
 		}
 
-		if ss.Annotations != nil && version > maxVersion {
-			result = &ss
-			maxVersion = version
+		if ss.Annotations != nil {
+			if version > maxVersion {
+				// Higher version found, restructure the list of max version statefulset
+				result = []*appsv1.StatefulSet{&ss}
+				maxVersion = version
+			} else if version == maxVersion {
+				// Another max version statefulset found, append it to the result list
+				result = append(result, &ss)
+			}
 		}
 	}
 
 	ctxlog.Debug(ctx, "Getting the latest StatefulSet with version '", maxVersion, "' owned by QuarksStatefulSet '", qStatefulSet.GetNamespacedName())
+
+	if len(result) == 0 {
+		// No statefulset found, return the default one
+		result = []*appsv1.StatefulSet{defaultSts}
+	}
 
 	return result, maxVersion, nil
 }

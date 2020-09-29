@@ -82,12 +82,6 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 		return reconcile.Result{}, errors.Wrapf(err, "couldn't list StatefulSets for active/passive reconciliation")
 	}
 
-	ownedPods, err := r.getStsPodList(ctx, statefulSets)
-	if err != nil {
-		// Reconcile failed due to error - requeue
-		return reconcile.Result{}, errors.Wrapf(err, "couldn't retrieve pod items from sts: '%s'", request.NamespacedName)
-	}
-
 	// retrieves the ActivePassiveProbe children key,
 	// this is the container name in where the ActivePassiveProbe
 	// cmd, needs to be executed
@@ -97,10 +91,18 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request)
 		return reconcile.Result{}, errors.Wrapf(err, "None container name found in probe for '%s' QuarksStatefulSet", request.NamespacedName)
 	}
 
-	err = r.markActiveContainers(ctx, containerName, ownedPods, qSts)
-	if err != nil {
-		// Reconcile failed due to error - requeue
-		return reconcile.Result{}, err
+	for _, statefulSet := range statefulSets {
+		ownedPods, err := r.getStsPodList(ctx, statefulSet)
+		if err != nil {
+			// Reconcile failed due to error - requeue
+			return reconcile.Result{}, errors.Wrapf(err, "couldn't retrieve pod items from sts: '%s/%s'", statefulSet.Namespace, statefulSet.Name)
+		}
+
+		err = r.markActiveContainers(ctx, containerName, ownedPods, qSts)
+		if err != nil {
+			// Reconcile failed due to error - requeue
+			return reconcile.Result{}, err
+		}
 	}
 
 	ps := time.Second * time.Duration(qSts.Spec.ActivePassiveProbes[containerName].PeriodSeconds)
