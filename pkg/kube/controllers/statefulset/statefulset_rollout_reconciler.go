@@ -149,6 +149,9 @@ func (r *ReconcileStatefulSetRollout) Reconcile(request reconcile.Request) (reco
 
 	case rolloutStatePending:
 		if statefulSet.Status.Replicas < *statefulSet.Spec.Replicas {
+			if *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition > 0 {
+				(*statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition)--
+			}
 			newStatus = rolloutStateCanaryUpscale
 			resultWithRetrigger.RequeueAfter = getTimeOut(ctx, statefulSet, AnnotationUpdateWatchTime)
 		} else {
@@ -196,8 +199,8 @@ func (r *ReconcileStatefulSetRollout) updateWithPartitionMove(ctx context.Contex
 			return err
 		}
 	}
-	return nil
 
+	return nil
 }
 
 func getTimeOut(ctx context.Context, statefulSet appsv1.StatefulSet, watchTimeAnnotation string) time.Duration {
