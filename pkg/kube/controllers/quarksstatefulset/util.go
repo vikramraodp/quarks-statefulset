@@ -53,7 +53,7 @@ func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulS
 		}
 	}
 
-	ctxlog.Debugf(ctx, "Latest StatefulSet owned by QuarksStatefulSet '%s' has version '%s'", qStatefulSet.GetNamespacedName(), maxVersion)
+	ctxlog.Debugf(ctx, "Latest StatefulSet owned by QuarksStatefulSet '%s' has version '%d'", qStatefulSet.GetNamespacedName(), maxVersion)
 
 	return result, maxVersion, nil
 }

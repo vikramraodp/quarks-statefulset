@@ -1,10 +1,11 @@
 module code.cloudfoundry.org/quarks-statefulset
 
 require (
-	code.cloudfoundry.org/quarks-utils v0.0.0-20200925090848-029325981b63
+	code.cloudfoundry.org/quarks-utils v0.0.2-0.20201007144659-b8f6a7ee0d40
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect
+	github.com/go-logr/logr v0.1.0
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/jmoiron/sqlx v1.2.0 // indirect
 	github.com/lib/pq v1.2.0 // indirect
