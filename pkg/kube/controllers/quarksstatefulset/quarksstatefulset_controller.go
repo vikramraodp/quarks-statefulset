@@ -130,18 +130,16 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 		CreateFunc: func(e event.CreateEvent) bool {
 
 			o := e.Object.(*corev1.Secret)
-			shouldProcessEvent := vss.IsVersionedSecret(*o)
+			if !vss.IsVersionedSecret(*o) {
+				return false
+			}
+
 			reconciles, err := reference.GetReconciles(ctx, mgr.GetClient(), o, true)
 			if err != nil {
 				ctxlog.Errorf(ctx, "Failed to calculate reconciles for secret '%s/%s': %v", o.Namespace, o.Name, err)
 			}
 
-			if shouldProcessEvent && len(reconciles) > 0 {
-				return true
-			}
-
-			return false
-
+			return len(reconciles) > 0
 		},
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
