@@ -37,7 +37,7 @@ func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulS
 		return nil, 0, err
 	}
 
-	for i, _ := range statefulSets {
+	for i := range statefulSets {
 		ss := statefulSets[i]
 		strVersion := ss.Annotations[qstsv1a1.AnnotationVersion]
 		if strVersion == "" {
