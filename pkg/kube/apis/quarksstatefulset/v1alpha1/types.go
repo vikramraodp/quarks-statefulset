@@ -28,6 +28,9 @@ var (
 	LabelAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
 	// LabelPodOrdinal is the index of pod ordinal
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
+
+	// LabelInstance is the instance.id/spec.id
+	LabelInstance = fmt.Sprintf("%s/spec-index", apis.GroupName)
 	// LabelQStsName is the name of the QuarksStatefulSet owns this resource
 	LabelQStsName = fmt.Sprintf("%s/quarks-statefulset-name", apis.GroupName)
 	// LabelActivePod is the active pod on an active/passive setup

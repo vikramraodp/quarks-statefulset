@@ -61,7 +61,7 @@ func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulS
 		}
 	}
 
-	ctxlog.Debug(ctx, "Getting the latest StatefulSet with version '", maxVersion, "' owned by QuarksStatefulSet '", qStatefulSet.GetNamespacedName())
+	ctxlog.Debugf(ctx, "Latest StatefulSet owned by QuarksStatefulSet '%s' has version '%d'", qStatefulSet.GetNamespacedName(), maxVersion)
 
 	if len(result) == 0 {
 		// No statefulset found, return the default one
@@ -73,8 +73,6 @@ func GetMaxStatefulSetVersion(ctx context.Context, client crc.Client, qStatefulS
 
 // listStatefulSetsFromInformer gets StatefulSets cross version owned by the QuarksStatefulSet from informer
 func listStatefulSetsFromInformer(ctx context.Context, client crc.Client, qStatefulSet *qstsv1a1.QuarksStatefulSet) ([]appsv1.StatefulSet, error) {
-	ctxlog.Debugf(ctx, "Listing StatefulSets owned by QuarksStatefulSet '%s' via informer", qStatefulSet.GetNamespacedName())
-
 	allStatefulSets := &appsv1.StatefulSetList{}
 	err := client.List(ctx, allStatefulSets,
 		crc.InNamespace(qStatefulSet.Namespace),
@@ -83,34 +81,27 @@ func listStatefulSetsFromInformer(ctx context.Context, client crc.Client, qState
 		return nil, err
 	}
 
-	return getStatefulSetsOwnedBy(ctx, qStatefulSet, allStatefulSets.Items)
+	return filterByOwner(qStatefulSet, allStatefulSets.Items)
 }
 
 // listStatefulSetsFromAPIClient gets StatefulSets cross version owned by the QuarksStatefulSet from API client directly
 func listStatefulSetsFromAPIClient(ctx context.Context, client appsv1client.AppsV1Interface, qStatefulSet *qstsv1a1.QuarksStatefulSet) ([]appsv1.StatefulSet, error) {
-	ctxlog.Debugf(ctx, "Listing StatefulSets owned by QuarksStatefulSet '%s'", qStatefulSet.GetNamespacedName())
-
 	allStatefulSets, err := client.StatefulSets(qStatefulSet.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return getStatefulSetsOwnedBy(ctx, qStatefulSet, allStatefulSets.Items)
+	return filterByOwner(qStatefulSet, allStatefulSets.Items)
 }
 
-// getStatefulSetsOwnedBy gets StatefulSets owned by the QuarksStatefulSet
-func getStatefulSetsOwnedBy(ctx context.Context, qStatefulSet *qstsv1a1.QuarksStatefulSet, statefulSets []appsv1.StatefulSet) ([]appsv1.StatefulSet, error) {
+// filterByOwner gets StatefulSets owned by the QuarksStatefulSet
+func filterByOwner(qStatefulSet *qstsv1a1.QuarksStatefulSet, statefulSets []appsv1.StatefulSet) ([]appsv1.StatefulSet, error) {
 	result := []appsv1.StatefulSet{}
 
 	for _, statefulSet := range statefulSets {
 		if metav1.IsControlledBy(&statefulSet, qStatefulSet) {
 			result = append(result, statefulSet)
-			ctxlog.Debug(ctx, "Found StatefulSet '", statefulSet.Name, "' owned by QuarksStatefulSet '", qStatefulSet.GetNamespacedName())
 		}
-	}
-
-	if len(result) == 0 {
-		ctxlog.Debug(ctx, "Did not find any StatefulSet owned by QuarksStatefulSet '", qStatefulSet.GetNamespacedName())
 	}
 
 	return result, nil

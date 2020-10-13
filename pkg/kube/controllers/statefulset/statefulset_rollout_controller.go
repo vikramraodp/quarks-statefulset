@@ -76,6 +76,6 @@ func CheckUpdate(e event.UpdateEvent) bool {
 		oldSts.Status.Replicas == newSts.Status.Replicas {
 		return false
 	}
-	return true
 
+	return true
 }
