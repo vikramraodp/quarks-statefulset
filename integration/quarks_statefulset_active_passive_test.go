@@ -348,6 +348,14 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 			Expect(qSts).NotTo(Equal(nil))
 			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
 
+			By("Waiting for pod in z0 to be ready")
+			err = env.WaitForPodReady(env.Namespace, fmt.Sprintf("%s-z0-0", qStsName))
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Waiting for pod in z1 to be ready")
+			err = env.WaitForPodReady(env.Namespace, fmt.Sprintf("%s-z1-0", qStsName))
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Waiting for pod in z0 to have the label")
 			err = env.WaitForPodLabelToExist(env.Namespace, fmt.Sprintf("%s-z0-0", qStsName), labelKey)
 			Expect(err).NotTo(HaveOccurred())
