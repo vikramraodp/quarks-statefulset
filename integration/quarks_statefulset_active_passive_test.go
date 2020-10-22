@@ -332,4 +332,29 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Context("when QuarksStatefulSet cross AZs", func() {
+		sleepCMD := []string{"/bin/sh", "-c", "sleep 2"}
+		zones := []string{"z0", "z1"}
+		It("should validate all pods cross AZs", func() {
+			By("Creating a multiple AZs QuarksStatefulSet cro with a valid CRD probe cmd")
+			var qSts *qstsv1a1.QuarksStatefulSet
+			qSts, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, env.QstsWithProbeSinglePodMultipleAZs(
+				qStsName,
+				sleepCMD,
+				zones,
+			))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(qSts).NotTo(Equal(nil))
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("Waiting for pod in z0 to have the label")
+			err = env.WaitForPodLabelToExist(env.Namespace, fmt.Sprintf("%s-z0-0", qStsName), labelKey)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Waiting for pod in z1 to have the label")
+			err = env.WaitForPodLabelToExist(env.Namespace, fmt.Sprintf("%s-z1-0", qStsName), labelKey)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 })
