@@ -63,22 +63,33 @@ func (r *ReconcileQuarksStatefulSetStatus) Reconcile(request reconcile.Request) 
 	}
 
 	// get latest statefulSet
-	statefulSet, _, err := GetMaxStatefulSetVersion(ctx, r.client, qStatefulSet)
+	statefulSets, _, err := GetMaxStatefulSetVersion(ctx, r.client, qStatefulSet)
 	if err != nil {
 		// Reconcile failed due to error - requeue
 		return reconcile.Result{}, errors.Wrapf(err, "couldn't get latest StatefulSet")
 	}
 
-	replicas := int32(1)
-	if statefulSet.Spec.Replicas != nil {
-		replicas = *statefulSet.Spec.Replicas
-	}
-	if statefulSet.Status.ReadyReplicas == replicas {
-		qStatefulSet.Status.Ready = true
-		err = r.client.Status().Update(ctx, qStatefulSet)
-		if err != nil {
-			ctxlog.WithEvent(qStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update status on QuarksStatefulSet '%s' (%v): %s", request.NamespacedName, qStatefulSet.ResourceVersion, err)
-			return reconcile.Result{Requeue: false}, nil
+	if len(statefulSets) > 0 {
+		readyStsCnt := 0
+		for _, statefulSet := range statefulSets {
+			replicas := int32(1)
+			if statefulSet.Spec.Replicas != nil {
+				replicas = *statefulSet.Spec.Replicas
+			}
+
+			if statefulSet.Status.ReadyReplicas != replicas {
+				break
+			}
+			readyStsCnt++
+		}
+
+		if readyStsCnt == len(statefulSets) {
+			qStatefulSet.Status.Ready = true
+			err = r.client.Status().Update(ctx, qStatefulSet)
+			if err != nil {
+				ctxlog.WithEvent(qStatefulSet, "UpdateStatusError").Errorf(ctx, "Failed to update status on QuarksStatefulSet '%s' (%v): %s", request.NamespacedName, qStatefulSet.ResourceVersion, err)
+				return reconcile.Result{Requeue: false}, nil
+			}
 		}
 	}
 
