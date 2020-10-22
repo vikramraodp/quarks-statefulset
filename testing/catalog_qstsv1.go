@@ -40,6 +40,29 @@ func (c *Catalog) QstsWithProbeSinglePod(name string, cmd []string) qstsv1a1.Qua
 	}
 }
 
+// QstsWithProbeSinglePodMultipleAZs for use in tests
+func (c *Catalog) QstsWithProbeSinglePodMultipleAZs(name string, cmd []string, zones []string) qstsv1a1.QuarksStatefulSet {
+	return qstsv1a1.QuarksStatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: qstsv1a1.QuarksStatefulSetSpec{
+			Template: c.DefaultStatefulSet(name),
+			ActivePassiveProbes: map[string]v1.Probe{
+				"busybox": v1.Probe{
+					PeriodSeconds: 2,
+					Handler: v1.Handler{
+						Exec: &v1.ExecAction{
+							Command: cmd,
+						},
+					},
+				},
+			},
+			Zones: zones,
+		},
+	}
+}
+
 // QstsWithActiveSinglePod for use in tests
 func (c *Catalog) QstsWithActiveSinglePod(name string, cmd []string) qstsv1a1.QuarksStatefulSet {
 	return qstsv1a1.QuarksStatefulSet{

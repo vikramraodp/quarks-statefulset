@@ -7,11 +7,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/statefulset"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
 	"code.cloudfoundry.org/quarks-utils/pkg/pointers"
@@ -38,29 +36,6 @@ func (c *Catalog) DefaultSecret(name string) corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{Name: name},
 		StringData: map[string]string{
 			name: "default-value",
-		},
-	}
-}
-
-// QstsWithProbeSinglePodMultipleAZs for use in tests
-func (c *Catalog) QstsWithProbeSinglePodMultipleAZs(name string, cmd []string, zones []string) qstsv1a1.QuarksStatefulSet {
-	return qstsv1a1.QuarksStatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: qstsv1a1.QuarksStatefulSetSpec{
-			Template: c.DefaultStatefulSet(name),
-			ActivePassiveProbes: map[string]v1.Probe{
-				"busybox": v1.Probe{
-					PeriodSeconds: 2,
-					Handler: v1.Handler{
-						Exec: &v1.ExecAction{
-							Command: cmd,
-						},
-					},
-				},
-			},
-			Zones: zones,
 		},
 	}
 }
