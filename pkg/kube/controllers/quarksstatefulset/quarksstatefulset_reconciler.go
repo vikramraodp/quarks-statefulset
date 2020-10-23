@@ -15,7 +15,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -162,9 +161,6 @@ func (r *ReconcileQuarksStatefulSet) UpdateVersions(ctx context.Context, qStatef
 	volumes := qStatefulSet.Spec.Template.Spec.Template.Spec.Volumes
 	for volumeIndex, volume := range volumes {
 		if volume.VolumeSource.Secret != nil {
-			if err := r.client.Get(ctx, types.NamespacedName{Name: volume.Secret.SecretName, Namespace: qStatefulSet.Namespace}, secret); err != nil {
-				return err
-			}
 			if vss.IsVersionedSecret(*secret) {
 				secretNameSplitted := strings.Split(secret.GetName(), "-")
 				latestSecret, err := r.versionedSecretStore.Latest(ctx, qStatefulSet.Namespace, strings.Join(secretNameSplitted[0:len(secretNameSplitted)-1], "-"))
