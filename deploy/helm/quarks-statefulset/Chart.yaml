@@ -1,0 +1,15 @@
+apiVersion: v1
+name: quarks-statefulset
+version: x.x.x
+appVersion: x.x.x
+description: A Helm chart for quarks-statefulset
+home: https://github.com/cloudfoundry-incubator/quarks-statefulset
+icon: https://cloudfoundry-incubator.github.io/quarks-helm/logo.png
+keywords:
+- quarks
+- statefulset
+sources:
+- https://github.com/cloudfoundry-incubator/quarks-statefulset
+maintainers:
+- name: project-quarks
+  email: project-quarks@googlegroups.com

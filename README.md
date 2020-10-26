@@ -5,7 +5,6 @@
 [![go report card](https://goreportcard.com/badge/code.cloudfoundry.org/quarks-statefulset)](https://goreportcard.com/report/code.cloudfoundry.org/quarks-statefulset)
 [![Coveralls github](https://img.shields.io/coveralls/github/cloudfoundry-incubator/quarks-statefulset.svg?style=flat)](https://coveralls.io/github/cloudfoundry-incubator/quarks-statefulset?branch=HEAD)
 
-| Nightly build | [![nightly](https://ci.flintstone.cf.cloud.ibm.com/api/v1/teams/quarks/pipelines/cf-operator-nightly/badge)](https://ci.flintstone.cf.cloud.ibm.com/teams/quarks/pipelines/cf-operator-nightly) |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 
 <img align="right" width="200" height="39" src="https://github.com/cloudfoundry-incubator/quarks-docs/raw/master/content/en/docs/cf-operator-logo.png">

@@ -3,7 +3,6 @@ package kube_test
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"testing"
 	"time"
@@ -26,13 +25,6 @@ var (
 )
 
 func FailAndCollectDebugInfo(description string, callerSkip ...int) {
-	fmt.Println("Collecting debug information...")
-	out, err := exec.Command("../../testing/dump_env.sh", namespace).CombinedOutput()
-	if err != nil {
-		fmt.Println("Failed to run the `dump_env.sh` script", err)
-	}
-	fmt.Println(string(out))
-
 	Fail(description, callerSkip...)
 }
 
@@ -53,16 +45,18 @@ var _ = BeforeEach(func() {
 	dir, err := os.Getwd()
 	Expect(err).ToNot(HaveOccurred())
 
-	chartPath := fmt.Sprintf("%s%s", dir, "/../../helm/quarks")
+	chartPath := fmt.Sprintf("%s%s", dir, "/../../helm/quarks-statefulset")
 
 	namespace, operatorNamespace, teardown, err = e2ehelper.CreateNamespace()
 	Expect(err).ToNot(HaveOccurred())
 	teardowns = append(teardowns, teardown)
 
+	teardown, err = e2ehelper.CreateMonitoredNamespace(namespace, operatorNamespace)
+	Expect(err).ToNot(HaveOccurred())
+	teardowns = append(teardowns, teardown)
+
 	teardown, err = e2ehelper.InstallChart(chartPath, operatorNamespace,
-		"--set", fmt.Sprintf("global.singleNamespace.name=%s", namespace),
-		"--set", fmt.Sprintf("global.monitoredID=%s", namespace),
-		"--set", fmt.Sprintf("quarks-job.persistOutputClusterRole.name=%s", namespace),
+		"--set", fmt.Sprintf("global.monitoredID=%s", operatorNamespace),
 	)
 	Expect(err).ToNot(HaveOccurred())
 	// prepend helm clean up
