@@ -103,7 +103,7 @@ var _ = Describe("Controllers", func() {
 
 		Context("if there is no cert secret yet", func() {
 			It("generates and persists the certificates on disk and in a secret", func() {
-				file := "/tmp/cf-operator-hook-" + config.OperatorNamespace + "/tls.key"
+				file := "/tmp/qsts-hook-" + config.OperatorNamespace + "/tls.key"
 				Expect(afero.Exists(config.Fs, file)).To(BeFalse())
 
 				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
@@ -128,7 +128,7 @@ var _ = Describe("Controllers", func() {
 				secret := &unstructured.Unstructured{
 					Object: map[string]interface{}{
 						"metadata": map[string]interface{}{
-							"name":      "cf-operator-webhook-server-cert",
+							"name":      "qsts-webhook-server-cert",
 							"namespace": config.OperatorNamespace,
 						},
 						"data": map[string]interface{}{
@@ -162,22 +162,12 @@ var _ = Describe("Controllers", func() {
 
 					switch config := object.(type) {
 					case *admissionregistration.MutatingWebhookConfiguration:
-						Expect(config.Name).To(Equal("cf-operator-hook-default"))
+						Expect(config.Name).To(Equal("qsts-hook-default"))
 						Expect(len(config.Webhooks)).To(Equal(2))
 
 						wh := config.Webhooks[0]
 						Expect(wh.Name).To(Equal("mutate-pods.quarks.cloudfoundry.org"))
 						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/mutate-pods"))
-						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
-						Expect(*wh.FailurePolicy).To(Equal(admissionregistration.Fail))
-						return nil
-					case *admissionregistration.ValidatingWebhookConfiguration:
-						Expect(config.Name).To(Equal("cf-operator-hook-default"))
-						Expect(len(config.Webhooks)).To(Equal(2))
-
-						wh := config.Webhooks[0]
-						Expect(wh.Name).To(Equal("validate-boshdeployment.quarks.cloudfoundry.org"))
-						Expect(*wh.ClientConfig.URL).To(Equal("https://foo.com:1234/validate-boshdeployment"))
 						Expect(wh.ClientConfig.CABundle).To(ContainSubstring("the-ca-cert"))
 						Expect(*wh.FailurePolicy).To(Equal(admissionregistration.Fail))
 						return nil

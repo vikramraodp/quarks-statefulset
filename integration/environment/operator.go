@@ -19,7 +19,7 @@ import (
 	helper "code.cloudfoundry.org/quarks-utils/testing/testhelper"
 )
 
-// StartOperator prepares and starts the cf-operator
+// StartOperator prepares and starts the operator
 func (e *Environment) StartOperator() error {
 	mgr, err := e.setupOperator()
 	if err != nil {
