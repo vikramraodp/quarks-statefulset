@@ -3,7 +3,6 @@ package kube_test
 import (
 	"fmt"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -85,14 +84,4 @@ func waitReady(name string) {
 func waitReadyNamespace(ns, name string) {
 	err := kubectl.Wait(ns, "ready", name, kubectl.PollTimeout)
 	Expect(err).ToNot(HaveOccurred(), "waiting for resource: ", name)
-}
-
-func applyNamespace(ns, p string) {
-	yamlPath := path.Join(examplesDir, p)
-	err := cmdHelper.Apply(ns, yamlPath)
-	Expect(err).ToNot(HaveOccurred())
-}
-
-func apply(p string) {
-	applyNamespace(namespace, p)
 }

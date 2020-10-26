@@ -44,7 +44,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 	)
 
 	BeforeEach(func() {
-		controllers.AddToScheme(scheme.Scheme)
+		Expect(controllers.AddToScheme(scheme.Scheme)).To(Succeed())
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 

@@ -33,7 +33,7 @@ var _ = Describe("Controllers", func() {
 	Describe("AddToScheme", func() {
 		It("registers our schemes with the operator", func() {
 			scheme := scheme.Scheme
-			controllers.AddToScheme(scheme)
+			Expect(controllers.AddToScheme(scheme)).To(Succeed())
 			kinds := []string{}
 			for k := range scheme.AllKnownTypes() {
 				kinds = append(kinds, k.Kind)
@@ -55,14 +55,13 @@ var _ = Describe("Controllers", func() {
 		)
 
 		BeforeEach(func() {
-
 			client = &cfakes.FakeClient{}
 			restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{})
 			restMapper.Add(schema.GroupVersionKind{Group: "", Kind: "Pod", Version: "v1"}, meta.RESTScopeNamespace)
 
 			manager = &cfakes.FakeManager{}
 
-			controllers.AddToScheme(scheme.Scheme)
+			Expect(controllers.AddToScheme(scheme.Scheme)).To(Succeed())
 
 			manager.GetSchemeReturns(scheme.Scheme)
 
