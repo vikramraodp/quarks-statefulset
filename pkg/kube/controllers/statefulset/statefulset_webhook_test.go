@@ -71,7 +71,7 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 
 		decoder, _ = admission.NewDecoder(scheme)
 		mutator = NewMutator(log, &cfcfg.Config{CtxTimeOut: 10 * time.Second})
-		mutator.(admission.DecoderInjector).InjectDecoder(decoder)
+		_ = mutator.(admission.DecoderInjector).InjectDecoder(decoder)
 	})
 
 	Context("that is newly created", func() {

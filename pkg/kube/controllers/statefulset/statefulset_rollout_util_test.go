@@ -37,7 +37,7 @@ var _ = Describe("CleanupNonReadyPod", func() {
 	annotations := make(map[string]string)
 
 	JustBeforeEach(func() {
-		controllers.AddToScheme(scheme.Scheme)
+		Expect(controllers.AddToScheme(scheme.Scheme)).To(Succeed())
 
 		_, log = helper.NewTestLogger()
 		ctx = ctxlog.NewParentContext(log)

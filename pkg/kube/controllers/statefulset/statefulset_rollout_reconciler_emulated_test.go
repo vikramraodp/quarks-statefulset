@@ -32,7 +32,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 	)
 
 	JustBeforeEach(func() {
-		controllers.AddToScheme(scheme.Scheme)
+		Expect(controllers.AddToScheme(scheme.Scheme)).To(Succeed())
 		manager = &cfakes.FakeManager{}
 		manager.GetSchemeReturns(scheme.Scheme)
 
