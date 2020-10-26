@@ -1,7 +1,7 @@
 module code.cloudfoundry.org/quarks-statefulset
 
 require (
-	code.cloudfoundry.org/quarks-utils v0.0.2-0.20201026162026-c453eb732cf9
+	code.cloudfoundry.org/quarks-utils v0.0.2-0.20201027094321-c08e86782644
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/elazarl/goproxy v0.0.0-20191011121108-aa519ddbe484 // indirect
