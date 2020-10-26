@@ -105,7 +105,7 @@ var _ = Describe("CLI", func() {
 		It("should show a semantic version number", func() {
 			session, err := act("version")
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out).Should(Say(`Quarks-statefulset Version: \d+.\d+.\d+`))
+			Eventually(session.Out).Should(Say(`Quarks Statefulset Version: \d+.\d+.\d+`))
 		})
 	})
 })

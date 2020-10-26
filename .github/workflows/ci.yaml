@@ -1,25 +1,19 @@
 name: quarks-operator-ci
 
 on:
-  push:
-    tags:
-      - v*
-    branches:
-      - master
-    paths-ignore:
-    - "docs/**"
-    - "website/**"
   pull_request:
+  schedule:
+    - cron:  '0 0 * * *'
 
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set up Go 1.13.4
+    - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.13.4
+        go-version: 1.15
     - uses: actions/checkout@v2
     - uses: actions/cache@v1
       with:
@@ -47,16 +41,17 @@ jobs:
 
   cluster-tests:
     needs: [unit-tests]
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
         kubernetes_version: [v1.14.10,v1.15.7,v1.16.4,v1.17.0,v1.18.0]
 
     steps:
-    - name: Set up Go 1.13.4
+    - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.13.4
+        go-version: 1.15
     - uses: actions/checkout@v2
     - uses: actions/cache@v1
       with:
@@ -70,11 +65,15 @@ jobs:
     - name: Install shared tools
       run: |
         bin/tools
+    - name: Prepare GITHUB_ACTION_BRANCH env
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: prepare_branch_env
     - name: Create k8s Kind Cluster
       uses: engineerd/setup-kind@v0.3.0
       with:
        config: .github/kind-config.yaml
-       version: v0.7.0
+       version: v0.8.0
        image: kindest/node:${{matrix.kubernetes_version}}
     - name: Run cluster tests
       run: |
@@ -82,13 +81,20 @@ jobs:
         git config --global user.name $GITHUB_ACTOR
         bin/test-integration
         INTEGRATION_SUITE=storage bin/test-integration
+
+        bin/test-cli-e2e
+        bin/build-image
+        bin/build-helm
+        bin/test-helm-e2e
       env:
+        PROJECT: "quarks-statefulset"
+        GITHUB_ACTION_BRANCH: ${{ steps.prepare_branch_env.outputs.branch }}
+        USE_KIND: "true"
         NODES: "3"
         GOPROXY: "https://proxy.golang.org"
         OPERATOR_TEST_STORAGE_CLASS: "standard"
-        PROJECT: "quarks-statefulset"
-        USE_KIND: "true"
         QUARKS_STS_WEBHOOK_SERVICE_HOST: 172.17.0.1
+
     - uses: actions/upload-artifact@v2
       if: failure()
       with:
