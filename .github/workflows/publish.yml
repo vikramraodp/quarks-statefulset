@@ -21,7 +21,7 @@ jobs:
     - uses: azure/setup-helm@v1
       with:
         version: v3.3.4
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@master
       with:
         # for git push to helm repo
         token: ${{ secrets.GH_PASSWORD }}
@@ -49,17 +49,17 @@ jobs:
         echo "##[set-output name=version;]$(echo $ARTIFACT_VERSION)"
       id: prepare_version_env
 
-    - name: Vendor go mod dependencies
-      run: go mod vendor
+    # - name: Vendor go mod dependencies
+    #   run: go mod vendor
 
-    - name: Publish Docker Image
-      uses: whoan/docker-build-with-cache-action@v5
-      with:
-        username: cfcontainerizationbot
-        password: "${{ secrets.CR_PAT }}"
-        registry: "${{ env.DOCKER_IMAGE_ORG }}"
-        image_name: "${{ env.DOCKER_IMAGE_REPOSITORY }}"
-        image_tag: "${{ steps.prepare_version_env.outputs.version }}"
+    # - name: Publish Docker Image
+    #   uses: whoan/docker-build-with-cache-action@v5
+    #   with:
+    #     username: cfcontainerizationbot
+    #     password: "${{ secrets.CR_PAT }}"
+    #     registry: "${{ env.DOCKER_IMAGE_ORG }}"
+    #     image_name: "${{ env.DOCKER_IMAGE_REPOSITORY }}"
+    #     image_tag: "${{ steps.prepare_version_env.outputs.version }}"
 
     - name: Build Helm Chart
       run: |
