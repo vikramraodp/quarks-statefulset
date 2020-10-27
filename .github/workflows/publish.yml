@@ -22,9 +22,6 @@ jobs:
       with:
         version: v3.3.4
     - uses: actions/checkout@master
-      with:
-        # for git push to helm repo
-        token: ${{ secrets.GH_PASSWORD }}
     - uses: actions/cache@v1
       with:
         path: ~/go/pkg/mod
@@ -93,6 +90,6 @@ jobs:
 
         echo "Tag Github Commit with $ARTIFACT_VERSION"
         git tag -a "$ARTIFACT_VERSION" -m "tag $ARTIFACT_VERSION"
-        git push --quiet origin "$ARTIFACT_VERSION"
+        git push origin "$ARTIFACT_VERSION"
       env:
         ARTIFACT_VERSION: "${{ steps.prepare_version_env.outputs.version }}"
