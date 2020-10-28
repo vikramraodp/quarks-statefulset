@@ -22,11 +22,6 @@ import (
 	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 )
 
-const (
-	// Port on which the controller-runtime manager listens
-	managerPort = 2999
-)
-
 var (
 	log *zap.SugaredLogger
 )
@@ -40,7 +35,9 @@ var rootCmd = &cobra.Command{
 	Short: "quarks-statefulset manages statefulsets on Kubernetes",
 	RunE: func(_ *cobra.Command, args []string) error {
 		log = logger.NewControllerLogger(cmd.LogLevel())
-		defer log.Sync()
+		defer func() {
+			_ = log.Sync()
+		}()
 
 		restConfig, err := cmd.KubeConfig(log)
 		if err != nil {
@@ -54,10 +51,9 @@ var rootCmd = &cobra.Command{
 		cmd.MonitoredID(cfg)
 
 		log.Infof("Starting quarks-statefulset %s, monitoring namespaces labeled with '%s'", version.Version, cfg.MonitoredID)
-		log.Infof("quarks-statefulset docker image: %s", config.GetOperatorDockerImage())
 
 		serviceHost := viper.GetString("operator-webhook-service-host")
-		// Port on which the cf operator webhook kube service listens to.
+		// Port on which the operator webhook kube service listens to.
 		servicePort := viper.GetInt32("operator-webhook-service-port")
 		useServiceRef := viper.GetBool("operator-webhook-use-service-reference")
 
@@ -82,7 +78,7 @@ var rootCmd = &cobra.Command{
 		mgr, err := operator.NewManager(ctx, cfg, restConfig, manager.Options{
 			MetricsBindAddress: "0",
 			LeaderElection:     false,
-			Port:               managerPort,
+			Port:               int(servicePort),
 			Host:               "0.0.0.0",
 		})
 		if err != nil {
@@ -124,7 +120,6 @@ func init() {
 	cmd.ApplyCRDsFlags(pf, argToEnv)
 	cmd.MeltdownFlags(pf, argToEnv)
 
-	pf.StringP("bosh-dns-docker-image", "", "coredns/coredns:1.6.3", "The docker image used for emulating bosh DNS (a CoreDNS image)")
 	pf.String("cluster-domain", "cluster.local", "The Kubernetes cluster domain")
 	pf.Int("max-quarks-statefulset-workers", 1, "Maximum number of workers concurrently running QuarksStatefulSet controller")
 	pf.StringP("operator-webhook-service-host", "w", "", "Hostname/IP under which the webhook server can be reached from the cluster")

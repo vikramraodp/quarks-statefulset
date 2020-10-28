@@ -23,7 +23,7 @@ const (
 	// HTTPReadyzEndpoint route
 	HTTPReadyzEndpoint = "/readyz"
 	// WebhookConfigPrefix is the prefix for the dir containing the webhook SSL certs
-	WebhookConfigPrefix = "cf-operator-hook-"
+	WebhookConfigPrefix = "qsts-hook-"
 )
 
 // Theses funcs construct controllers and add them to the controller-runtime
@@ -81,13 +81,13 @@ func AddHooks(ctx context.Context, config *config.Config, m manager.Manager, gen
 	}
 
 	ctxlog.Info(ctx, "Generating webhook certificates")
-	err := webhookConfig.SetupCertificate(ctx)
+	err := webhookConfig.SetupCertificate(ctx, "qsts-webhook")
 	if err != nil {
 		return errors.Wrap(err, "setting up the webhook server certificate")
 	}
 
 	ctxlog.Info(ctx, "Generating mutating webhook server configuration")
-	err = webhookConfig.CreateMutationWebhookServerConfig(ctx, mutatingWebhooks)
+	err = webhookConfig.CreateMutationWebhookServerConfig(ctx, "qsts-webhook", mutatingWebhooks)
 	if err != nil {
 		return errors.Wrap(err, "generating the webhook server configuration")
 	}

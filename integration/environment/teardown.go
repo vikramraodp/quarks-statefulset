@@ -25,7 +25,7 @@ func (e *Environment) removeWebhookCache() {
 // NukeWebhooks nukes all webhooks at the end of the run
 func NukeWebhooks(namespacesToNuke []string) {
 	for _, namespace := range namespacesToNuke {
-		err := cmdHelper.DeleteWebhooks(namespace)
+		err := cmdHelper.DeleteWebhooks(namespace, "qsts-hook")
 		if err != nil {
 			fmt.Printf("WARNING: failed to delete mutatingwebhookconfiguration in %s: %v\n", namespace, err)
 		}
