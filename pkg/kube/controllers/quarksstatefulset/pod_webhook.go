@@ -8,7 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
-	"code.cloudfoundry.org/quarks-utils/pkg/logger"
 	"code.cloudfoundry.org/quarks-utils/pkg/monitorednamespace"
 	"code.cloudfoundry.org/quarks-utils/pkg/names"
 	wh "code.cloudfoundry.org/quarks-utils/pkg/webhook"
@@ -16,9 +15,6 @@ import (
 
 // NewQuarksStatefulSetPodMutator creates a quarksStatefulSet pod mutator for managing volumes
 func NewQuarksStatefulSetPodMutator(log *zap.SugaredLogger, config *config.Config) *wh.OperatorWebhook {
-	log = logger.Unskip(log, "quarks-statefulset-pod-mutator")
-	log.Info("Setting up mutator for quarksStatefulSet pods")
-
 	quarksStatefulSetMutator := NewPodMutator(log, config)
 
 	scope := admissionregistration.NamespacedScope
