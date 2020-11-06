@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
@@ -19,6 +22,7 @@ import (
 
 // PodMutator for adding the pod-ordinal label on statefulset pods
 type PodMutator struct {
+	client  client.Client
 	log     *zap.SugaredLogger
 	config  *config.Config
 	decoder *admission.Decoder
@@ -55,6 +59,11 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 			podLabels = map[string]string{}
 		}
 		setPodOrdinal(updatedPod, podLabels)
+
+		err := m.setNewOrdinal(ctx, updatedPod, podLabels)
+		if err != nil {
+			return admission.Errored(http.StatusInternalServerError, err)
+		}
 	}
 
 	marshaledPod, err := json.Marshal(updatedPod)
@@ -82,6 +91,27 @@ func setPodOrdinal(pod *corev1.Pod, podLabels map[string]string) {
 	}
 }
 
+func (m *PodMutator) setNewOrdinal(ctx context.Context, pod *corev1.Pod, podLabels map[string]string) error {
+	labels := map[string]string{"controller-revision-hash": pod.Labels["controller-revision-hash"]}
+	list := &corev1.PodList{}
+	err := m.client.List(ctx, list, client.InNamespace(pod.Namespace), client.MatchingLabels(labels))
+	if err != nil {
+		return errors.Wrapf(err, "failed to list pods in namespace: %s", pod.Namespace)
+	}
+
+	newOrdinal := 0
+	for _, p := range list.Items {
+		if p.Name != pod.Name {
+			newOrdinal++
+		}
+	}
+
+	// zero based
+	podLabels[qstsv1a1.LabelStartupOrdinal] = strconv.Itoa(newOrdinal)
+	pod.SetLabels(podLabels)
+	return nil
+}
+
 // isQuarksStatefulSet check is it is quarksStatefulSet Pod
 func isQuarksStatefulSet(labels map[string]string) bool {
 	if _, exists := labels[appsv1.StatefulSetPodNameLabel]; exists {
@@ -96,5 +126,14 @@ var _ admission.DecoderInjector = &PodMutator{}
 // InjectDecoder injects the decoder.
 func (m *PodMutator) InjectDecoder(d *admission.Decoder) error {
 	m.decoder = d
+	return nil
+}
+
+// Check that PodMutator implements the inject.Client interface
+var _ inject.Client = &PodMutator{}
+
+// InjectClient injects the client.
+func (m *PodMutator) InjectClient(c client.Client) error {
+	m.client = c
 	return nil
 }

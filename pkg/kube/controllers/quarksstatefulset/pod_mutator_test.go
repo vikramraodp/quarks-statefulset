@@ -16,6 +16,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/json"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/quarksstatefulset"
@@ -27,6 +30,7 @@ import (
 
 var _ = Describe("Add labels to qsts pods", func() {
 	var (
+		client   client.Client
 		ctx      context.Context
 		decoder  *admission.Decoder
 		env      testing.Catalog
@@ -72,6 +76,7 @@ var _ = Describe("Add labels to qsts pods", func() {
 	})
 
 	JustBeforeEach(func() {
+		_ = mutator.(inject.Client).InjectClient(client)
 		response = mutator.Handle(ctx, request)
 	})
 
@@ -84,6 +89,7 @@ var _ = Describe("Add labels to qsts pods", func() {
 				Spec: env.Sleep1hPodSpec(),
 			}
 			request = newAdmissionRequest(pod)
+			client = fakeClient.NewFakeClient(&pod)
 		})
 
 		It("does not modify", func() {
@@ -93,22 +99,24 @@ var _ = Describe("Add labels to qsts pods", func() {
 	})
 
 	When("pod is part of qsts", func() {
-		When("it is not created yet", func() {
+		When("list pods would return none, pod is not created yet", func() {
 			BeforeEach(func() {
 				pod = env.LabeledPod("qsts-pod-0", map[string]string{
 					appsv1.StatefulSetPodNameLabel: "exists",
 					"controller-revision-hash":     "abcd",
 				})
+				client = fakeClient.NewFakeClient()
 				request = newAdmissionRequest(pod)
 			})
 
 			It("sets ordinal labels correct", func() {
 				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-				Expect(response.Patches).To(HaveLen(2))
+				Expect(response.Patches).To(HaveLen(3))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
 				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
+				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 			})
@@ -120,16 +128,18 @@ var _ = Describe("Add labels to qsts pods", func() {
 					appsv1.StatefulSetPodNameLabel: "exists",
 					"controller-revision-hash":     "abcd",
 				})
+				client = fakeClient.NewFakeClient(&pod)
 				request = newAdmissionRequest(pod)
 			})
 
 			It("sets ordinal labels correct", func() {
 				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-				Expect(response.Patches).To(HaveLen(2))
+				Expect(response.Patches).To(HaveLen(3))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
 				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
+				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 			})
@@ -141,19 +151,80 @@ var _ = Describe("Add labels to qsts pods", func() {
 					appsv1.StatefulSetPodNameLabel: "exists",
 					"controller-revision-hash":     "abcd",
 				})
+				first := env.LabeledPod("qsts-pod-0", map[string]string{
+					appsv1.StatefulSetPodNameLabel: "exists",
+					"controller-revision-hash":     "abcd",
+				})
+				client = fakeClient.NewFakeClient(&pod, &first)
 				request = newAdmissionRequest(pod)
 			})
 
 			It("sets ordinal labels are correct", func() {
 				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-				Expect(response.Patches).To(HaveLen(2))
+				Expect(response.Patches).To(HaveLen(3))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "1")))
 				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "1")))
+				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "1")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 			})
 		})
+
+		When("pod-1 exists first", func() {
+			BeforeEach(func() {
+				pod = env.LabeledPod("qsts-pod-0", map[string]string{
+					appsv1.StatefulSetPodNameLabel: "exists",
+					"controller-revision-hash":     "abcd",
+				})
+				first := env.LabeledPod("qsts-pod-1", map[string]string{
+					appsv1.StatefulSetPodNameLabel: "exists",
+					"controller-revision-hash":     "abcd",
+				})
+				client = fakeClient.NewFakeClient(&pod, &first)
+				request = newAdmissionRequest(pod)
+			})
+
+			It("sets ordinal labels are correct", func() {
+				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
+
+				Expect(response.Patches).To(HaveLen(3))
+				patches := jsonPatches(response.Patches)
+				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
+				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
+				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "1")))
+
+				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
+		})
+
+		When("pod from different controller revision hash exists", func() {
+			BeforeEach(func() {
+				pod = env.LabeledPod("qsts-pod-1", map[string]string{
+					appsv1.StatefulSetPodNameLabel: "exists",
+					"controller-revision-hash":     "efgh",
+				})
+				first := env.LabeledPod("qsts-pod-0", map[string]string{
+					appsv1.StatefulSetPodNameLabel: "exists",
+					"controller-revision-hash":     "abcd",
+				})
+				client = fakeClient.NewFakeClient(&pod, &first)
+				request = newAdmissionRequest(pod)
+			})
+
+			It("sets ordinal labels are correct", func() {
+				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
+
+				Expect(response.Patches).To(HaveLen(3))
+				patches := jsonPatches(response.Patches)
+				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "1")))
+				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "1")))
+				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
+
+				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
+		})
+
 	})
 })

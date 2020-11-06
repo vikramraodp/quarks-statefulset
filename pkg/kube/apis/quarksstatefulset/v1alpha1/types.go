@@ -28,6 +28,8 @@ var (
 	LabelAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
 	// LabelPodOrdinal is the index of pod ordinal
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
+	// LabelStartupOrdinal is the index of a pod in startup order
+	LabelStartupOrdinal = fmt.Sprintf("%s/startup-ordinal", apis.GroupName)
 
 	// LabelInstance is the instance.id/spec.id
 	LabelInstance = fmt.Sprintf("%s/spec-index", apis.GroupName)

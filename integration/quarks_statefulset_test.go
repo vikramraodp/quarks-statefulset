@@ -83,6 +83,15 @@ var _ = Describe("QuarksStatefulSet", func() {
 					}
 				}
 				Expect(ords).To(ConsistOf("0", "1", "2", "3"))
+
+				By("Checking for the startup-ordinal label")
+				ords = []string{}
+				for _, p := range pods.Items {
+					if ord, ok := p.Labels["quarks.cloudfoundry.org/startup-ordinal"]; ok {
+						ords = append(ords, ord)
+					}
+				}
+				Expect(ords).To(ConsistOf("0", "1", "2", "3"))
 			})
 		})
 
