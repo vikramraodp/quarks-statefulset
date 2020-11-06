@@ -38,19 +38,23 @@ func NewPodMutator(log *zap.SugaredLogger, config *config.Config) admission.Hand
 	}
 }
 
-// Handle checks if pod is part of a statefulset and adds the pod-ordinal label
-// on the pod
+// Handle checks if pod is part of a statefulset and adds the pod-ordinal labels
+// on the pod for service selectors
 func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admission.Response {
 	pod := &corev1.Pod{}
 	err := m.decoder.Decode(req, pod)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
-	m.log.Debugf("Pod mutator handler ran for pod '%s/%s' (%s)", pod.Namespace, pod.Name, req.Namespace)
 
 	updatedPod := pod.DeepCopy()
 	if isQuarksStatefulSet(pod.GetLabels()) {
-		m.mutatePodsFn(updatedPod)
+		m.log.Debugf("Mutating pod '%s/%s' (%s), adding ordinals", pod.Namespace, pod.Name, req.Namespace)
+		podLabels := pod.GetLabels()
+		if podLabels == nil {
+			podLabels = map[string]string{}
+		}
+		setPodOrdinal(updatedPod, podLabels)
 	}
 
 	marshaledPod, err := json.Marshal(updatedPod)
@@ -61,16 +65,8 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledPod)
 }
 
-// mutatePodsFn add a pod-ordinal label to the given pod
-func (m *PodMutator) mutatePodsFn(pod *corev1.Pod) {
-	m.log.Infof("Mutating Pod '%s/%s'", pod.Namespace, pod.Name)
-
-	// Add pod ordinal label for service selectors
-	podLabels := pod.GetLabels()
-	if podLabels == nil {
-		podLabels = map[string]string{}
-	}
-
+// setPodOrdinal adds a pod-ordinal label to the given pod
+func setPodOrdinal(pod *corev1.Pod, podLabels map[string]string) {
 	podOrdinal := names.OrdinalFromPodName(pod.GetName())
 
 	azIndex, err := strconv.Atoi(podLabels[qstsv1a1.LabelAZIndex])

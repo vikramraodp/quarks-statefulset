@@ -64,7 +64,7 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 	}
 }
 
-// DefaultPodTemplate defines a pod template with a simple web server useful for testing
+// DefaultPodTemplate defines a pod template with the testpod label
 func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -77,7 +77,7 @@ func (c *Catalog) DefaultPodTemplate(name string) corev1.PodTemplateSpec {
 	}
 }
 
-// DefaultPodTemplateWithActiveLabel defines a pod template with a simple web server useful for testing
+// DefaultPodTemplateWithActiveLabel defines a pod template with an pod-active label
 func (c *Catalog) DefaultPodTemplateWithActiveLabel(name string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -180,7 +180,18 @@ func (c *Catalog) StatefulSetWithPVC(name, pvcName string, storageClassName stri
 	}
 }
 
-// PodTemplateWithLabelsAndMount defines a pod template with a simple web server useful for testing
+// LabeledPod defines a pod with labels
+func (c *Catalog) LabeledPod(name string, labels map[string]string) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Spec: c.Sleep1hPodSpec(),
+	}
+}
+
+// PodTemplateWithLabelsAndMount defines a pod template with a volume mount
 func (c *Catalog) PodTemplateWithLabelsAndMount(name string, labels map[string]string, pvcName string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -302,7 +313,7 @@ func (c *Catalog) DefaultVolumeMount(name string) corev1.VolumeMount {
 	}
 }
 
-// WrongPodTemplateWithLabelsAndMount defines a pod template with a simple web server useful for testing
+// WrongPodTemplateWithLabelsAndMount defines a pod template with wrong label/image and a volument mount
 func (c *Catalog) WrongPodTemplateWithLabelsAndMount(name string, labels map[string]string, pvcName string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -324,7 +335,7 @@ func (c *Catalog) WrongPodTemplateWithLabelsAndMount(name string, labels map[str
 	}
 }
 
-// WrongPodTemplate defines a pod template with a simple web server useful for testing
+// WrongPodTemplate defines a pod template with the wrong label/image
 func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
