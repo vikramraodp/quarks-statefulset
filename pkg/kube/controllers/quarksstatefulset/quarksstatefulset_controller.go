@@ -75,6 +75,11 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*qstsv1a1.QuarksStatefulSet)
 			n := e.ObjectNew.(*qstsv1a1.QuarksStatefulSet)
+
+			if !reflect.DeepEqual(o.Spec.Template.Spec.VolumeClaimTemplates, n.Spec.Template.Spec.VolumeClaimTemplates) {
+				ctxlog.WithEvent(n, "VolumeClaimTemplatesWarning").Infof(ctx, "Change in VolumeClaimTemplates QuarksStatefulSet won't be performed in sts as it's not supported by Kubernetes")
+			}
+
 			if !reflect.DeepEqual(o.Spec, n.Spec) || !reflect.DeepEqual(o.Labels, n.Labels) || !reflect.DeepEqual(o.Annotations, n.Annotations) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
 					ctx, e.MetaNew, "qstsv1a1.QuarksStatefulSet",
