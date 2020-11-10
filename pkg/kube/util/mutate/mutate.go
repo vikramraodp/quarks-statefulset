@@ -16,6 +16,7 @@ func StatefulSetMutateFn(sfs *appsv1.StatefulSet) controllerutil.MutateFn {
 		sfs.Spec.Replicas = updated.Spec.Replicas
 		sfs.Spec.Template = updated.Spec.Template
 		sfs.Spec.UpdateStrategy = updated.Spec.UpdateStrategy
+		sfs.Spec.VolumeClaimTemplates = updated.Spec.VolumeClaimTemplates
 		return nil
 	}
 }
