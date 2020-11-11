@@ -3,9 +3,12 @@ package storage_test
 import (
 	"fmt"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-utils/testing/machine"
@@ -77,6 +80,55 @@ var _ = Describe("QuarksStatefulSet", func() {
 			out, err := env.GetPodLogs(env.Namespace, podName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(out)).To(Equal("present\n"))
+		})
+
+		It("should warn when volume templates are updated in qsts", func() {
+			ess, tearDown, err := env.CreateQuarksStatefulSet(env.Namespace, quarksStatefulSet)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+
+			By("Checking for pod")
+			err = env.WaitForPods(env.Namespace, "testpod=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			ess, err = env.GetQuarksStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+			ess.Spec.Template.Spec.Template.ObjectMeta.Labels["testpodupdated"] = "yes"
+			vols := []corev1.Volume{{
+				Name: "pvc",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			}}
+			ess.Spec.Template.Spec.Template.Spec.Volumes = vols
+			ess.Spec.Template.Spec.VolumeClaimTemplates = nil
+			By("Updating the QuarksStatefulSet")
+
+			essUpdated, tearDown, err := env.UpdateQuarksStatefulSet(env.Namespace, *ess)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(essUpdated).NotTo(Equal(nil))
+			defer func(tdf machine.TearDownFunc) { Expect(tdf()).To(Succeed()) }(tearDown)
+			By("Checking for sts")
+			err = env.WaitForPods(env.Namespace, "testpodupdated=yes")
+			Expect(err).NotTo(HaveOccurred())
+
+			ess, err = env.GetQuarksStatefulSet(env.Namespace, ess.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ess).NotTo(Equal(nil))
+
+			objectName := ess.ObjectMeta.Name
+			objectUID := string(ess.ObjectMeta.UID)
+			err = wait.PollImmediate(5*time.Second, 35*time.Second, func() (bool, error) {
+				return env.GetNamespaceEvents(env.Namespace,
+					objectName,
+					objectUID,
+					"VolumeClaimTemplatesWarning",
+					"Change in VolumeClaimTemplates QuarksStatefulSet won't be performed in sts as it's not supported by Kubernetes",
+				)
+			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
