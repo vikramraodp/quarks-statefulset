@@ -15,12 +15,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	qstsv1a1 "code.cloudfoundry.org/quarks-statefulset/pkg/kube/apis/quarksstatefulset/v1alpha1"
 	"code.cloudfoundry.org/quarks-statefulset/pkg/kube/controllers/quarksstatefulset"
 	"code.cloudfoundry.org/quarks-statefulset/testing"
 	"code.cloudfoundry.org/quarks-utils/pkg/config"
@@ -39,7 +41,31 @@ var _ = Describe("Add labels to qsts pods", func() {
 		pod      corev1.Pod
 		request  admission.Request
 		response admission.Response
+		qsts     qstsv1a1.QuarksStatefulSet
+		scheme   *runtime.Scheme
+		// sts      appsv1.StatefulSet
+		// oldSts   appsv1.StatefulSet
 	)
+
+	revisionPod := func(name string, revision string) corev1.Pod {
+		return env.LabeledPod(name, map[string]string{
+			appsv1.StatefulSetPodNameLabel: "exists",
+			qstsv1a1.LabelQStsName:         "mutate-test",
+			"controller-revision-hash":     revision,
+		})
+	}
+
+	revisionSts := func(revision string) *appsv1.StatefulSet {
+		return &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "mutate-test-0",
+				Labels: map[string]string{
+					qstsv1a1.LabelQStsName:     "mutate-test",
+					"controller-revision-hash": revision,
+				},
+			},
+		}
+	}
 
 	addLabelPatch := func(name string, value string) string {
 		return fmt.Sprintf(`{"op":"add","path":"/metadata/labels/quarks.cloudfoundry.org~1%s","value":"%s"}`, name, value)
@@ -68,11 +94,15 @@ var _ = Describe("Add labels to qsts pods", func() {
 
 		mutator = quarksstatefulset.NewPodMutator(log, &config.Config{CtxTimeOut: 10 * time.Second})
 
-		scheme := runtime.NewScheme()
+		scheme = runtime.NewScheme()
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
+		Expect(appsv1.AddToScheme(scheme)).To(Succeed())
+		Expect(qstsv1a1.AddToScheme(scheme)).To(Succeed())
 
 		decoder, _ = admission.NewDecoder(scheme)
 		_ = mutator.(admission.DecoderInjector).InjectDecoder(decoder)
+
+		qsts = env.DefaultQuarksStatefulSet("mutate-test")
 	})
 
 	JustBeforeEach(func() {
@@ -83,13 +113,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 	When("pod is not part of qsts", func() {
 		BeforeEach(func() {
 			pod = corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "name",
-				},
-				Spec: env.Sleep1hPodSpec(),
+				ObjectMeta: metav1.ObjectMeta{Name: "name"},
+				Spec:       env.Sleep1hPodSpec(),
 			}
 			request = newAdmissionRequest(pod)
-			client = fakeClient.NewFakeClient(&pod)
+			client = fakeClient.NewFakeClientWithScheme(scheme, &pod)
 		})
 
 		It("does not modify", func() {
@@ -101,12 +129,17 @@ var _ = Describe("Add labels to qsts pods", func() {
 	When("pod is part of qsts", func() {
 		When("list pods would return none, pod is not created yet", func() {
 			BeforeEach(func() {
-				pod = env.LabeledPod("qsts-pod-0", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "abcd",
-				})
-				client = fakeClient.NewFakeClient()
+				pod = revisionPod("qsts-pod-0", "abcd")
+				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts)
 				request = newAdmissionRequest(pod)
+			})
+
+			It("sets updates revisions annotation on qsts", func() {
+				qsts := &qstsv1a1.QuarksStatefulSet{}
+				err := client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"abcd":{"0":"0"}}`))
+
 			})
 
 			It("sets ordinal labels correct", func() {
@@ -124,11 +157,8 @@ var _ = Describe("Add labels to qsts pods", func() {
 
 		When("it is the first pod", func() {
 			BeforeEach(func() {
-				pod = env.LabeledPod("qsts-pod-0", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "abcd",
-				})
-				client = fakeClient.NewFakeClient(&pod)
+				pod = revisionPod("qsts-pod-0", "abcd")
+				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod)
 				request = newAdmissionRequest(pod)
 			})
 
@@ -147,15 +177,9 @@ var _ = Describe("Add labels to qsts pods", func() {
 
 		When("pod-0 exists first", func() {
 			BeforeEach(func() {
-				pod = env.LabeledPod("qsts-pod-1", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "abcd",
-				})
-				first := env.LabeledPod("qsts-pod-0", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "abcd",
-				})
-				client = fakeClient.NewFakeClient(&pod, &first)
+				pod = revisionPod("qsts-pod-1", "abcd")
+				first := revisionPod("qsts-pod-0", "abcd")
+				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod, &first)
 				request = newAdmissionRequest(pod)
 			})
 
@@ -173,43 +197,61 @@ var _ = Describe("Add labels to qsts pods", func() {
 		})
 
 		When("pod-1 exists first", func() {
-			BeforeEach(func() {
-				pod = env.LabeledPod("qsts-pod-0", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "abcd",
+			When("this is a new deployment", func() {
+				BeforeEach(func() {
+					pod = revisionPod("qsts-pod-0", "abcd")
+					first := revisionPod("qsts-pod-1", "abcd")
+					client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod, &first)
+					request = newAdmissionRequest(pod)
 				})
-				first := env.LabeledPod("qsts-pod-1", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "abcd",
+
+				It("sets ordinal labels correctly", func() {
+					Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
+
+					Expect(response.Patches).To(HaveLen(3))
+					patches := jsonPatches(response.Patches)
+					Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
+					Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
+					// first created pod is bootstrapping,
+					// this pod was created second, so
+					// startup-ordinal should be 1
+					Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "1")))
+
+					Expect(response.AdmissionResponse.Allowed).To(BeTrue())
 				})
-				client = fakeClient.NewFakeClient(&pod, &first)
-				request = newAdmissionRequest(pod)
 			})
 
-			It("sets ordinal labels are correct", func() {
-				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
+			When("restarting the first pod", func() {
+				BeforeEach(func() {
+					pod = revisionPod("qsts-pod-0", "abcd")
+					first := revisionPod("qsts-pod-1", "abcd")
 
-				Expect(response.Patches).To(HaveLen(3))
-				patches := jsonPatches(response.Patches)
-				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
-				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
-				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "1")))
+					_ = qsts.SetRevisions(qstsv1a1.Revisions{"abcd": qstsv1a1.Ordinals{"0": "0", "1": "1"}})
+					sts := revisionSts("abcd")
 
-				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+					client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, sts, &pod, &first)
+					request = newAdmissionRequest(pod)
+				})
+
+				It("keeps the previous startup-ordinal", func() {
+					Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
+
+					Expect(response.Patches).To(HaveLen(3))
+					patches := jsonPatches(response.Patches)
+					Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
+					// this is just a restart
+					Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
+
+					Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+				})
 			})
 		})
 
 		When("pod from different controller revision hash exists", func() {
 			BeforeEach(func() {
-				pod = env.LabeledPod("qsts-pod-1", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "efgh",
-				})
-				first := env.LabeledPod("qsts-pod-0", map[string]string{
-					appsv1.StatefulSetPodNameLabel: "exists",
-					"controller-revision-hash":     "abcd",
-				})
-				client = fakeClient.NewFakeClient(&pod, &first)
+				pod = revisionPod("qsts-pod-1", "efgh")
+				first := revisionPod("qsts-pod-0", "abcd")
+				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod, &first)
 				request = newAdmissionRequest(pod)
 			})
 
@@ -226,5 +268,40 @@ var _ = Describe("Add labels to qsts pods", func() {
 			})
 		})
 
+		When("old controller revision vanished", func() {
+			BeforeEach(func() {
+				pod = revisionPod("qsts-pod-1", "efgh")
+				_ = qsts.SetRevisions(qstsv1a1.Revisions{"abcd": qstsv1a1.Ordinals{"0": "0", "1": "1"}})
+				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod)
+				request = newAdmissionRequest(pod)
+			})
+
+			It("adds the new revision to the annotation on qsts and cleans up", func() {
+				qsts := &qstsv1a1.QuarksStatefulSet{}
+				err := client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"efgh":{"1":"0"}}`))
+
+			})
+		})
+
+		When("old controller revision exists", func() {
+			BeforeEach(func() {
+				pod = revisionPod("qsts-pod-1", "efgh")
+				first := revisionPod("qsts-pod-0", "abcd")
+				_ = qsts.SetRevisions(qstsv1a1.Revisions{"abcd": qstsv1a1.Ordinals{"0": "0", "1": "1"}})
+				sts := revisionSts("abcd")
+				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, sts, &pod, &first)
+				request = newAdmissionRequest(pod)
+			})
+
+			It("adds the new revision to the annotation on qsts", func() {
+				qsts := &qstsv1a1.QuarksStatefulSet{}
+				err := client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"abcd":{"0":"0","1":"1"},"efgh":{"1":"0"}}`))
+
+			})
+		})
 	})
 })
