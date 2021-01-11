@@ -69,7 +69,7 @@ var _ = Describe("QuarksStatefulSet", func() {
 
 			It("should create a statefulSet and eventually a pod", func() {
 				By("Checking for pod")
-				err = env.WaitForPods(env.Namespace, "testpod=yes")
+				err = env.WaitForPodCount(env.Namespace, "testpod=yes", 4)
 				Expect(err).NotTo(HaveOccurred())
 
 				pods, err := env.GetPods(env.Namespace, "testpod=yes")
@@ -280,7 +280,7 @@ var _ = Describe("QuarksStatefulSet", func() {
 
 			It("keeps the previous startup ordinal", func() {
 				By("Checking for pod")
-				err = env.WaitForPods(env.Namespace, "testpod=yes")
+				err = env.WaitForPodCount(env.Namespace, "testpod=yes", 3)
 				Expect(err).NotTo(HaveOccurred())
 
 				pods, err := env.GetPods(env.Namespace, "testpod=yes")
