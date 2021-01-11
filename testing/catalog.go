@@ -352,7 +352,7 @@ func (c *Catalog) WrongPodTemplate(name string) corev1.PodTemplateSpec {
 			Containers: []corev1.Container{
 				{
 					Name:  "wrong-container",
-					Image: "wrong-image",
+					Image: "ghcr.io/cfcontainerizationbot/wrong-image",
 				},
 			},
 		},

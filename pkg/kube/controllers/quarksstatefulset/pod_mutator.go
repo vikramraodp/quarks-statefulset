@@ -168,7 +168,9 @@ func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, pod
 
 // isQuarksStatefulSet check is it is quarksStatefulSet Pod
 func isQuarksStatefulSet(labels map[string]string) bool {
-	if _, exists := labels[appsv1.StatefulSetPodNameLabel]; exists {
+	_, sts := labels[appsv1.StatefulSetPodNameLabel]
+	_, qsts := labels[qstsv1a1.LabelQStsName]
+	if sts && qsts {
 		return true
 	}
 	return false
