@@ -56,9 +56,10 @@ func (c *Catalog) Sleep1hPodSpec() corev1.PodSpec {
 		TerminationGracePeriodSeconds: pointers.Int64(1),
 		Containers: []corev1.Container{
 			{
-				Name:    "busybox",
-				Image:   "busybox",
-				Command: []string{"sleep", "3600"},
+				Name:            "busybox",
+				Image:           "busybox",
+				ImagePullPolicy: corev1.PullIfNotPresent,
+				Command:         []string{"sleep", "3600"},
 			},
 		},
 	}
@@ -202,9 +203,10 @@ func (c *Catalog) PodTemplateWithLabelsAndMount(name string, labels map[string]s
 			TerminationGracePeriodSeconds: pointers.Int64(1),
 			Containers: []corev1.Container{
 				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
+					Name:            "busybox",
+					Image:           "busybox",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"sleep", "3600"},
 					VolumeMounts: []corev1.VolumeMount{
 						c.DefaultVolumeMount(pvcName),
 					},
@@ -324,8 +326,9 @@ func (c *Catalog) WrongPodTemplateWithLabelsAndMount(name string, labels map[str
 			TerminationGracePeriodSeconds: pointers.Int64(1),
 			Containers: []corev1.Container{
 				{
-					Name:  "wrong-container",
-					Image: "wrong-image",
+					Name:            "wrong-container",
+					Image:           "wrong-image",
+					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts: []corev1.VolumeMount{
 						c.DefaultVolumeMount(pvcName),
 					},
@@ -390,9 +393,10 @@ func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec
 			},
 			Containers: []corev1.Container{
 				{
-					Name:    "container1",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
+					Name:            "container1",
+					Image:           "busybox",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"sleep", "3600"},
 					EnvFrom: []corev1.EnvFromSource{
 						{
 							ConfigMapRef: &corev1.ConfigMapEnvSource{
@@ -411,9 +415,10 @@ func (c *Catalog) OwnedReferencesPodTemplate(name string) corev1.PodTemplateSpec
 					},
 				},
 				{
-					Name:    "container2",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
+					Name:            "container2",
+					Image:           "busybox",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Command:         []string{"sleep", "3600"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "ENV1",

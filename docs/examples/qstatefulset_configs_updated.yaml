@@ -43,6 +43,7 @@ spec:
           containers:
           - name: busybox
             image: busybox
+            imagePullPolicy: IfNotPresent
             command:
             - sleep
             - "3600"
