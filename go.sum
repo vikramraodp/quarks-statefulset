@@ -11,8 +11,8 @@ cloud.google.com/go/datastore v1.0.0/go.mod h1:LXYbyblFSglQ5pkeyhO+Qmw7ukd3C+pD7
 cloud.google.com/go/firestore v1.1.0/go.mod h1:ulACoGHTpvq5r8rxGJ4ddJZBZqakUQqClKRT5SZwBmk=
 cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2kNxGRt3I=
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201210092952-19bc6c410169 h1:C1pBoyhlTLAoISMnoSjkAxNZn8QVWba+Wtd+eSQ2seA=
-code.cloudfoundry.org/quarks-utils v0.0.2-0.20201210092952-19bc6c410169/go.mod h1:js5WFs4G2V0TR/8zJMhDTfMU7j/AjKUNKBvU/SnKiwo=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20210112105226-682bcba574a2 h1:fa+qziyLPYkeL0JkElqThtFoszqA6GC45dW9f5xUE9g=
+code.cloudfoundry.org/quarks-utils v0.0.2-0.20210112105226-682bcba574a2/go.mod h1:js5WFs4G2V0TR/8zJMhDTfMU7j/AjKUNKBvU/SnKiwo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-autorest/autorest v0.9.0/go.mod h1:xyHB1BMZT0cuDHU7I0+g046+BFDTQ8rEZB0s4Yfa6bI=
