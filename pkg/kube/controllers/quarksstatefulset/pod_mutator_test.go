@@ -43,8 +43,6 @@ var _ = Describe("Add labels to qsts pods", func() {
 		response admission.Response
 		qsts     qstsv1a1.QuarksStatefulSet
 		scheme   *runtime.Scheme
-		// sts      appsv1.StatefulSet
-		// oldSts   appsv1.StatefulSet
 	)
 
 	revisionPod := func(name string, revision string) corev1.Pod {
@@ -139,7 +137,6 @@ var _ = Describe("Add labels to qsts pods", func() {
 				err := client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"abcd":{"0":"0"}}`))
-
 			})
 
 			It("sets ordinal labels correct", func() {
@@ -172,6 +169,35 @@ var _ = Describe("Add labels to qsts pods", func() {
 				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
+			})
+		})
+
+		When("another pod is added", func() {
+			BeforeEach(func() {
+				sts := revisionSts("abcd")
+				pod = revisionPod("qsts-pod-0", "abcd")
+				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, sts, &pod)
+				request = newAdmissionRequest(pod)
+			})
+
+			It("keeps revision annotation updated", func() {
+				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
+
+				qsts := &qstsv1a1.QuarksStatefulSet{}
+				err := client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"abcd":{"0":"0"}}`))
+
+				first := revisionPod("qsts-pod-1", "abcd")
+				client.Create(context.TODO(), &first)
+
+				request = newAdmissionRequest(first)
+				response = mutator.Handle(ctx, request)
+				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
+
+				err = client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"abcd":{"0":"0","1":"1"}}`))
 			})
 		})
 
@@ -281,7 +307,6 @@ var _ = Describe("Add labels to qsts pods", func() {
 				err := client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"efgh":{"1":"0"}}`))
-
 			})
 		})
 
@@ -300,7 +325,6 @@ var _ = Describe("Add labels to qsts pods", func() {
 				err := client.Get(context.TODO(), types.NamespacedName{Name: "mutate-test", Namespace: ""}, qsts)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(qsts.Annotations[qstsv1a1.AnnotationRevisions]).To(Equal(`{"abcd":{"0":"0","1":"1"},"efgh":{"1":"0"}}`))
-
 			})
 		})
 	})

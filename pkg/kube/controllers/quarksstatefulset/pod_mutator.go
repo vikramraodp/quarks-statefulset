@@ -105,6 +105,7 @@ func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, pod
 	}
 
 	revisions := qsts.GetRevisions()
+	m.log.Debugf("Finding startup ordinal for pod '%s/%s' (pod ordinal: %s) from qsts '%s': %#v", pod.Namespace, pod.Name, pod.Labels[qstsv1a1.LabelQStsName], qsts.Name, revisions)
 
 	// cleanup annotation, by removing outdated revisions
 	list := &appsv1.StatefulSetList{}
@@ -115,20 +116,24 @@ func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, pod
 	seen := map[string]bool{}
 	for _, sts := range list.Items {
 		if r := sts.Labels["controller-revision-hash"]; r != "" {
+			m.log.Debugf("Clean up revision for pod '%s/%s', found existing sts for '%s'", pod.Namespace, pod.Name, r)
 			seen[r] = true
 		}
 	}
 	for r := range revisions {
 		if !seen[r] {
+			m.log.Debugf("Clean up revision '%s' for pod '%s/%s'", r, pod.Namespace, pod.Name)
 			delete(revisions, r)
 		}
 	}
+	m.log.Debugf("Cleaned up revisions for pod '%s/%s': %#v", pod.Namespace, pod.Name, revisions)
 
 	// use old startup ordinal if stored
 	podOrdinal := pod.Labels[qstsv1a1.LabelPodOrdinal]
 	startupOrdinal := ""
 	if s := revisions.StartupOrdinal(revision, podOrdinal); s != "" {
 		startupOrdinal = s
+		m.log.Debugf("Reusing startup ordinal '%s' from annotation for pod '%s/%s'", startupOrdinal, pod.Namespace, pod.Name)
 
 	} else {
 		// check for other pods in that revision
@@ -147,6 +152,7 @@ func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, pod
 			}
 		}
 		startupOrdinal = strconv.Itoa(newOrdinal)
+		m.log.Debugf("Counted pods and founnd startup ordinal '%s' for pod '%s/%s'", startupOrdinal, pod.Namespace, pod.Name)
 	}
 
 	podLabels[qstsv1a1.LabelStartupOrdinal] = startupOrdinal
@@ -159,6 +165,7 @@ func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, pod
 		return errors.Wrapf(err, "failed to marshall revisions annotations for '%s'", qstsName)
 	}
 
+	m.log.Debugf("Update qsts revisions on '%s' for pod '%s/%s': %#v", qsts.Name, startupOrdinal, pod.Namespace, pod.Name, qsts.Annotations)
 	err = m.client.Update(ctx, qsts)
 	if err != nil {
 		return errors.Wrapf(err, "failed to update revisions annotation on qsts '%s'", qstsName)
