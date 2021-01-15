@@ -306,8 +306,11 @@ var _ = Describe("QuarksStatefulSet", func() {
 					return p.ObjectMeta.ResourceVersion > pod.ObjectMeta.ResourceVersion
 				}, 60*time.Second).Should(Equal(true))
 
-				ord := p.Labels["quarks.cloudfoundry.org/pod-ordinal"]
-				Expect(p.Labels[qstsv1a1.LabelStartupOrdinal]).To(Equal(expect[ord]))
+				for _, pod := range pods.Items {
+					p, _ := client.Get(context.Background(), pod.Name, metav1.GetOptions{})
+					ord := p.Labels["quarks.cloudfoundry.org/pod-ordinal"]
+					Expect(p.Labels[qstsv1a1.LabelStartupOrdinal]).To(Equal(expect[ord]))
+				}
 			})
 		})
 	})

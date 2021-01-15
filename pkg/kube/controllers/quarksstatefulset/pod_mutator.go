@@ -114,12 +114,13 @@ func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, pod
 	}
 	seen := map[string]bool{}
 	for _, sts := range list.Items {
-		if r := sts.Labels["controller-revision-hash"]; r != "" {
+		if r := sts.Status.CurrentRevision; r != "" {
 			seen[r] = true
 		}
 	}
 	for r := range revisions {
 		if !seen[r] {
+			m.log.Debugf("Clean up qsts revisions annotation, removing sts revision '%s'", r)
 			delete(revisions, r)
 		}
 	}
@@ -159,6 +160,7 @@ func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, pod
 		return errors.Wrapf(err, "failed to marshall revisions annotations for '%s'", qstsName)
 	}
 
+	m.log.Debugf("Update qsts revisions annotation on '%s' while mutating pod '%s/%s': %#v", qsts.Name, startupOrdinal, pod.Namespace, pod.Name, revisions)
 	err = m.client.Update(ctx, qsts)
 	if err != nil {
 		return errors.Wrapf(err, "failed to update revisions annotation on qsts '%s'", qstsName)
