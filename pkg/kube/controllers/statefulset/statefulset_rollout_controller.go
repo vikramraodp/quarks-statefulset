@@ -44,8 +44,8 @@ func AddStatefulSetRollout(ctx context.Context, config *config.Config, mgr manag
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if CheckUpdate(e) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-					ctx, e.MetaNew, "StatefulSet",
-					fmt.Sprintf("Update predicate passed for '%s/%s' for statefulset rollout", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+					ctx, e.ObjectNew, "StatefulSet",
+					fmt.Sprintf("Update predicate passed for '%s/%s' for statefulset rollout", e.ObjectNew.GetNamespace(), e.ObjectNew.GetName()),
 				)
 				return true
 			}
