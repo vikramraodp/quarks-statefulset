@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	fakeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -82,7 +82,7 @@ var _ = Describe("Add labels to qsts pods", func() {
 	newAdmissionRequest := func(pod corev1.Pod) admission.Request {
 		raw, _ := json.Marshal(pod)
 		return admission.Request{
-			AdmissionRequest: admissionv1beta1.AdmissionRequest{
+			AdmissionRequest: admissionv1.AdmissionRequest{
 				Object: runtime.RawExtension{Raw: raw},
 			},
 		}
@@ -117,7 +117,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 				Spec:       env.Sleep1hPodSpec(),
 			}
 			request = newAdmissionRequest(pod)
-			client = fakeClient.NewFakeClientWithScheme(scheme, &pod)
+			client = fake.
+				NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(&pod).
+				Build()
 		})
 
 		It("does not modify", func() {
@@ -130,7 +134,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 		When("list pods would return none, pod is not created yet", func() {
 			BeforeEach(func() {
 				pod = revisionPod("qsts-pod-0", "abcd")
-				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts)
+				client = fake.
+					NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&qsts).
+					Build()
 				request = newAdmissionRequest(pod)
 			})
 
@@ -156,7 +164,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 		When("it is the first pod", func() {
 			BeforeEach(func() {
 				pod = revisionPod("qsts-pod-0", "abcd")
-				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod)
+				client = fake.
+					NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&qsts, &pod).
+					Build()
 				request = newAdmissionRequest(pod)
 			})
 
@@ -176,7 +188,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 			BeforeEach(func() {
 				sts := revisionSts("abcd")
 				pod = revisionPod("qsts-pod-0", "abcd")
-				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, sts, &pod)
+				client = fake.
+					NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&qsts, sts, &pod).
+					Build()
 				request = newAdmissionRequest(pod)
 			})
 
@@ -206,7 +222,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 			BeforeEach(func() {
 				pod = revisionPod("qsts-pod-1", "abcd")
 				first := revisionPod("qsts-pod-0", "abcd")
-				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod, &first)
+				client = fake.
+					NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&qsts, &pod, &first).
+					Build()
 				request = newAdmissionRequest(pod)
 			})
 
@@ -227,7 +247,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 				BeforeEach(func() {
 					pod = revisionPod("qsts-pod-0", "abcd")
 					first := revisionPod("qsts-pod-1", "abcd")
-					client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod, &first)
+					client = fake.
+						NewClientBuilder().
+						WithScheme(scheme).
+						WithObjects(&qsts, &pod, &first).
+						Build()
 					request = newAdmissionRequest(pod)
 				})
 
@@ -254,7 +278,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 					_ = qsts.SetRevisions(qstsv1a1.Revisions{"abcd": qstsv1a1.Ordinals{"0": "0", "1": "1"}})
 					sts := revisionSts("abcd")
 
-					client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, sts, &pod, &first)
+					client = fake.
+						NewClientBuilder().
+						WithScheme(scheme).
+						WithObjects(&qsts, sts, &pod, &first).
+						Build()
 					request = newAdmissionRequest(pod)
 				})
 
@@ -276,7 +304,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 			BeforeEach(func() {
 				pod = revisionPod("qsts-pod-1", "efgh")
 				first := revisionPod("qsts-pod-0", "abcd")
-				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod, &first)
+				client = fake.
+					NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&qsts, &pod, &first).
+					Build()
 				request = newAdmissionRequest(pod)
 			})
 
@@ -296,7 +328,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 			BeforeEach(func() {
 				pod = revisionPod("qsts-pod-1", "efgh")
 				_ = qsts.SetRevisions(qstsv1a1.Revisions{"abcd": qstsv1a1.Ordinals{"0": "0", "1": "1"}})
-				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, &pod)
+				client = fake.
+					NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&qsts, &pod).
+					Build()
 				request = newAdmissionRequest(pod)
 			})
 
@@ -314,7 +350,11 @@ var _ = Describe("Add labels to qsts pods", func() {
 				first := revisionPod("qsts-pod-0", "abcd")
 				_ = qsts.SetRevisions(qstsv1a1.Revisions{"abcd": qstsv1a1.Ordinals{"0": "0", "1": "1"}})
 				sts := revisionSts("abcd")
-				client = fakeClient.NewFakeClientWithScheme(scheme, &qsts, sts, &pod, &first)
+				client = fake.
+					NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&qsts, sts, &pod, &first).
+					Build()
 				request = newAdmissionRequest(pod)
 			})
 
