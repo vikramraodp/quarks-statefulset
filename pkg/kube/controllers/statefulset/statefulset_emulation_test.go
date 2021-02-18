@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -170,7 +169,7 @@ func (sse *StatefulSetEmulation) setPodFailed(pod *corev1.Pod) {
 func (sse *StatefulSetEmulation) FakeClient() *cfakes.FakeClient {
 	client := &cfakes.FakeClient{}
 
-	client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+	client.GetCalls(func(context context.Context, nn types.NamespacedName, object k8sclient.Object) error {
 		switch object := object.(type) {
 		case *appsv1.StatefulSet:
 			sse.statefulSet.DeepCopyInto(object)
@@ -186,12 +185,12 @@ func (sse *StatefulSetEmulation) FakeClient() *cfakes.FakeClient {
 		return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 	})
 
-	client.UpdateCalls(func(ctx context.Context, object runtime.Object, option ...k8sclient.UpdateOption) error {
+	client.UpdateCalls(func(ctx context.Context, object k8sclient.Object, option ...k8sclient.UpdateOption) error {
 		object.(*appsv1.StatefulSet).DeepCopyInto(&sse.statefulSet)
 		return nil
 	})
 
-	client.DeleteCalls(func(ctx context.Context, object runtime.Object, option ...k8sclient.DeleteOption) error {
+	client.DeleteCalls(func(ctx context.Context, object k8sclient.Object, option ...k8sclient.DeleteOption) error {
 		switch object := object.(type) {
 		case *corev1.Pod:
 			for i, pod := range sse.pods {

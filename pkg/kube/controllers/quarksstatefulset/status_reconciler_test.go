@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -54,7 +53,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 		ctx = ctxlog.NewParentContext(log)
 
 		client = &cfakes.FakeClient{}
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+		client.GetCalls(func(context context.Context, nn types.NamespacedName, object crc.Object) error {
 			switch object := object.(type) {
 			case *qstsv1a1.QuarksStatefulSet:
 				desiredQStatefulSet.DeepCopyInto(object)
@@ -62,7 +61,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 			}
 			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		})
-		client.ListCalls(func(context context.Context, object runtime.Object, _ ...crc.ListOption) error {
+		client.ListCalls(func(context context.Context, object crc.ObjectList, _ ...crc.ListOption) error {
 			switch object := object.(type) {
 			case *appsv1.StatefulSetList:
 				list := appsv1.StatefulSetList{
@@ -138,14 +137,14 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				},
 			}
 
-			client.UpdateCalls(func(context context.Context, object runtime.Object, _ ...crc.UpdateOption) error {
+			client.UpdateCalls(func(context context.Context, object crc.Object, _ ...crc.UpdateOption) error {
 				switch qSts := object.(type) {
 				case *qstsv1a1.QuarksStatefulSet:
 					Expect(qSts.Status.Ready).To(BeTrue())
 				}
 				return nil
 			})
-			result, err := reconciler.Reconcile(request)
+			result, err := reconciler.Reconcile(context.Background(), request)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 		})

@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -62,8 +63,8 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			}
 			if len(sts) == 0 {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
-					ctx, e.Meta, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Create predicate passed for '%s/%s'", e.Meta.GetNamespace(), e.Meta.GetName()),
+					ctx, e.Object, "qstsv1a1.QuarksStatefulSet",
+					fmt.Sprintf("Create predicate passed for '%s/%s'", e.Object.GetNamespace(), e.Object.GetName()),
 				)
 				return true
 			}
@@ -83,8 +84,8 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			// don't trigger for update to Annotations
 			if !reflect.DeepEqual(o.Spec, n.Spec) || !reflect.DeepEqual(o.Labels, n.Labels) {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-					ctx, e.MetaNew, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Update predicate passed for '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+					ctx, e.ObjectNew, "qstsv1a1.QuarksStatefulSet",
+					fmt.Sprintf("Update predicate passed for '%s/%s'", e.ObjectNew.GetNamespace(), e.ObjectNew.GetName()),
 				)
 				return true
 			}
@@ -108,9 +109,9 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			return !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data)
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			config := a.Object.(*corev1.ConfigMap)
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a crc.Object) []reconcile.Request {
+			config := a.(*corev1.ConfigMap)
 
 			if skip.Reconciles(ctx, mgr.GetClient(), config) {
 				return []reconcile.Request{}
@@ -122,11 +123,11 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "QuarksStatefulSet", a.Meta.GetName(), "config-maps")
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciliation, "QuarksStatefulSet", a.GetName(), "config-maps")
 			}
 			return reconciles
 		}),
-	}, nsPred, configMapPredicates)
+		nsPred, configMapPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching configMaps failed in QuarksStatefulSet controller failed.")
 	}
@@ -156,9 +157,9 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			return !reflect.DeepEqual(oldSecret.Data, newSecret.Data)
 		},
 	}
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(a handler.MapObject) []reconcile.Request {
-			secret := a.Object.(*corev1.Secret)
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(
+		func(a crc.Object) []reconcile.Request {
+			secret := a.(*corev1.Secret)
 
 			if skip.Reconciles(ctx, mgr.GetClient(), secret) {
 				return []reconcile.Request{}
@@ -170,12 +171,11 @@ func AddQuarksStatefulSet(ctx context.Context, config *config.Config, mgr manage
 			}
 
 			for _, reconciliation := range reconciles {
-				ctxlog.NewMappingEvent(a.Object).Debug(ctx, reconciliation, "QuarksStatefulSet", a.Meta.GetName(), "secret")
+				ctxlog.NewMappingEvent(a).Debug(ctx, reconciliation, "QuarksStatefulSet", a.GetName(), "secret")
 			}
 
 			return reconciles
-		}),
-	}, nsPred, secretPredicates)
+		}), nsPred, secretPredicates)
 	if err != nil {
 		return errors.Wrapf(err, "Watching secrets failed in QuarksStatefulSet controller failed.")
 	}
