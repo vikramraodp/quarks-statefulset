@@ -53,8 +53,8 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 			activePassiveCmd := qo.Spec.ActivePassiveProbes
 			if activePassiveCmd != nil {
 				ctxlog.NewPredicateEvent(e.Object).Debug(
-					ctx, e.Meta, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Create predicate passed for active-passive '%s/%s'", e.Meta.GetNamespace(), e.Meta.GetName()),
+					ctx, e.Object, "qstsv1a1.QuarksStatefulSet",
+					fmt.Sprintf("Create predicate passed for active-passive '%s/%s'", e.Object.GetNamespace(), e.Object.GetName()),
 				)
 				return true
 			}
@@ -68,8 +68,8 @@ func AddStatefulSetActivePassive(ctx context.Context, config *config.Config, mgr
 			activePassiveCmd := newStatefulSet.Spec.ActivePassiveProbes
 			if activePassiveCmd != nil {
 				ctxlog.NewPredicateEvent(e.ObjectNew).Debug(
-					ctx, e.MetaNew, "qstsv1a1.QuarksStatefulSet",
-					fmt.Sprintf("Update predicate passed for active-passive '%s/%s'", e.MetaNew.GetNamespace(), e.MetaNew.GetName()),
+					ctx, e.ObjectNew, "qstsv1a1.QuarksStatefulSet",
+					fmt.Sprintf("Update predicate passed for active-passive '%s/%s'", e.ObjectNew.GetNamespace(), e.ObjectNew.GetName()),
 				)
 				return true
 			}

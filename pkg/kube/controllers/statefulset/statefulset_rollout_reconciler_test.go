@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -130,7 +129,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 
 		client = &cfakes.FakeClient{}
 
-		client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+		client.GetCalls(func(context context.Context, nn types.NamespacedName, object k8sclient.Object) error {
 			switch object := object.(type) {
 			case *appsv1.StatefulSet:
 				statefulSet.DeepCopyInto(object)
@@ -147,7 +146,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 			return apierrors.NewNotFound(schema.GroupResource{}, nn.Name)
 		})
 
-		client.UpdateCalls(func(ctx context.Context, object runtime.Object, option ...k8sclient.UpdateOption) error {
+		client.UpdateCalls(func(ctx context.Context, object k8sclient.Object, option ...k8sclient.UpdateOption) error {
 			object.(*appsv1.StatefulSet).DeepCopyInto(&updatedStatefulSet)
 			return nil
 		})
@@ -178,14 +177,14 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 					})
 					It("sets state to 'Failed'", func() {
 						request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-						_, err := reconciler.Reconcile(request)
+						_, err := reconciler.Reconcile(context.Background(), request)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Failed"))
 					})
 				})
 
 				It("the partition is decreased by 1", func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.RequeueAfter).To(And(BeNumerically("<=", timeout), BeNumerically(">", timeout-timeoutTolerance)))
 					Expect(updatedStatefulSet.Spec.UpdateStrategy.RollingUpdate).NotTo(BeNil())
@@ -194,7 +193,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 
 				It("the stateful set is updated", func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.RequeueAfter).To(And(BeNumerically("<=", timeout), BeNumerically(">", timeout-timeoutTolerance)))
 					Expect(client.UpdateCallCount()).To(Equal(1))
@@ -202,7 +201,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 
 				It("the stateful rollout state is now 'Rollout'", func() {
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Rollout"))
 				})
@@ -212,7 +211,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo-0", Namespace: "default"}}
 
 				It("the partition is not set to zero", func() {
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(*updatedStatefulSet.Spec.UpdateStrategy.RollingUpdate.Partition).NotTo(Equal(0))
 					Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Done"))
@@ -231,7 +230,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 				It("sets state to 'Failed'", func() {
 					request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Failed"))
 				})
@@ -246,7 +245,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 			Context("with a canary_watch_time", func() {
 				It("retriggers a reconcile in canary_watch_time ms", func() {
 					request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-					response, err := reconciler.Reconcile(request)
+					response, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(response.RequeueAfter).To(And(BeNumerically("<=", timeout), BeNumerically(">", timeout-timeoutTolerance)))
 				})
@@ -264,7 +263,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 
 				It("the stateful rollout state is now 'Canary'", func() {
 					noneReadyPod.Name = "foo-1"
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(client.UpdateCallCount()).To(Equal(1))
 					Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Canary"))
@@ -287,7 +286,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 
 				It("the stateful rollout state is now 'Done'", func() {
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(client.UpdateCallCount()).To(Equal(1))
 					Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Done"))
@@ -304,7 +303,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 
 				It("some pod is not ready, rollout continues", func() {
 					noneReadyPod.Name = "foo-0"
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(client.UpdateCallCount()).To(Equal(1))
 					Expect(client.DeleteCallCount()).To(Equal(1))
@@ -312,7 +311,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 
 				It("last updated pod is not ready, rollout stops", func() {
 					noneReadyPod.Name = "foo-1"
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(client.UpdateCallCount()).To(Equal(0))
 					Expect(client.DeleteCallCount()).To(Equal(0))
@@ -325,7 +324,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 
 					It("doesn't delete any pods", func() {
 						noneReadyPod.Name = "foo-0"
-						_, err := reconciler.Reconcile(request)
+						_, err := reconciler.Reconcile(context.Background(), request)
 						Expect(err).To(HaveOccurred())
 						Expect(err.Error()).To(ContainSubstring("injected"))
 						Expect(client.UpdateCallCount()).To(Equal(1))
@@ -344,7 +343,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 
 				It("state is not changed to canary again", func() {
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(client.UpdateCallCount()).To(Equal(1))
 					Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Rollout"))
@@ -357,7 +356,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 				It("sets state to 'Failed'", func() {
 					request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-					_, err := reconciler.Reconcile(request)
+					_, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(updatedStatefulSet.Annotations).To(HaveKeyWithValue("quarks.cloudfoundry.org/canary-rollout", "Failed"))
 				})
@@ -377,7 +376,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 
 				It("state remains 'Done'", func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(reconcile.Result{}).To(Equal(result))
 					Expect(client.UpdateCallCount()).To(Equal(0))
@@ -391,7 +390,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 				})
 
 				It("state remains 'Done'", func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(reconcile.Result{}).To(Equal(result))
 					Expect(client.UpdateCallCount()).To(Equal(0))

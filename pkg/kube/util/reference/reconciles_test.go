@@ -44,13 +44,15 @@ var _ = Describe("GetReconciles", func() {
 		})
 
 		JustBeforeEach(func() {
-			client = fake.NewFakeClient(
-				&ests,
-				&configMap1,
-				&configMap2,
-				&secret1,
-				&secret2,
-			)
+			client = fake.
+				NewClientBuilder().
+				WithObjects(
+					&ests,
+					&configMap1,
+					&configMap2,
+					&secret1,
+					&secret2).
+				Build()
 		})
 
 		Context("when UpdateOnConfigChange is true", func() {

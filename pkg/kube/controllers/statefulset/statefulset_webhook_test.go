@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,9 +83,9 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 			newRaw, _ := json.Marshal(new)
 
 			response := mutator.Handle(ctx, admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
+				AdmissionRequest: admissionv1.AdmissionRequest{
 					Object:    runtime.RawExtension{Raw: newRaw},
-					Operation: admissionv1beta1.Create,
+					Operation: admissionv1.Create,
 				},
 			})
 			Expect(response.AdmissionResponse.Allowed).To(BeTrue())
@@ -103,10 +103,10 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 			raw, _ := json.Marshal(old)
 
 			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
+				AdmissionRequest: admissionv1.AdmissionRequest{
 					OldObject: runtime.RawExtension{Raw: raw},
 					Object:    runtime.RawExtension{Raw: raw},
-					Operation: admissionv1beta1.Update,
+					Operation: admissionv1.Update,
 				},
 			}
 		})
@@ -127,10 +127,10 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 			newRaw, _ := json.Marshal(new)
 
 			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
+				AdmissionRequest: admissionv1.AdmissionRequest{
 					OldObject: runtime.RawExtension{Raw: oldRaw},
 					Object:    runtime.RawExtension{Raw: newRaw},
-					Operation: admissionv1beta1.Update,
+					Operation: admissionv1.Update,
 				},
 			}
 		})
@@ -156,7 +156,7 @@ var _ = Describe("When the muatating webhook handles a statefulset", func() {
 			raw, _ := json.Marshal(old)
 
 			request = admission.Request{
-				AdmissionRequest: admissionv1beta1.AdmissionRequest{
+				AdmissionRequest: admissionv1.AdmissionRequest{
 					OldObject: runtime.RawExtension{Raw: raw},
 					Object:    runtime.RawExtension{Raw: []byte("invalid")},
 				},
