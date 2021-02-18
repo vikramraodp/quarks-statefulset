@@ -38,7 +38,7 @@ type ReconcileQuarksStatefulSetStatus struct {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileQuarksStatefulSetStatus) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileQuarksStatefulSetStatus) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 
 	// Fetch the QuarksStatefulSet we need to reconcile
 	qStatefulSet := &qstsv1a1.QuarksStatefulSet{}
