@@ -56,7 +56,7 @@ type ReconcileStatefulSetActivePassive struct {
 // container.
 // Note:
 // Reconcile will always requeue on success after ActivePassiveProbe.PeriodSeconds have passed.
-func (r *ReconcileStatefulSetActivePassive) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileStatefulSetActivePassive) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 	qSts := &qstsv1a1.QuarksStatefulSet{}
 
 	// Set the ctx to be Background, as the top-level context for incoming requests.

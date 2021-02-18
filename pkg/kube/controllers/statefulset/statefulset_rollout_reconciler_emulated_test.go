@@ -53,7 +53,7 @@ var _ = Describe("ReconcileStatefulSetRollout", func() {
 			return
 		}
 		if statefulset.CheckUpdate(*ev) {
-			_, err := reconciler.Reconcile(emulation.Request())
+			_, err := reconciler.Reconcile(context.Background(), emulation.Request())
 			Expect(err).NotTo(HaveOccurred())
 		}
 
