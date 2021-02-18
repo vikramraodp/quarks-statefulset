@@ -1,7 +1,7 @@
 apiVersion: v1
 name: quarks-statefulset
-version: x.x.x
-appVersion: x.x.x
+version: 0.0.0
+appVersion: 0.0.0
 description: A Helm chart for quarks-statefulset
 home: https://github.com/cloudfoundry-incubator/quarks-statefulset
 icon: https://cloudfoundry-incubator.github.io/quarks-helm/logo.png

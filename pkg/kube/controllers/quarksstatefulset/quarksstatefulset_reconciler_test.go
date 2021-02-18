@@ -119,38 +119,39 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				}
 				lastReconcileTime := metav1.NewTime(metav1.Now().Add(qstscontroller.ReconcileSkipDuration))
 				desiredQStatefulSet.Status.LastReconcile = &lastReconcileTime
-
-				client = fake.NewFakeClient(
-					desiredQStatefulSet,
-				)
+				client = fake.
+					NewClientBuilder().
+					WithObjects(desiredQStatefulSet).
+					Build()
 				manager.GetClientReturns(client)
 			})
 
 			When("meltdown is in place", func() {
 				BeforeEach(func() {
 					desiredQStatefulSet.Status.LastReconcile = nil
-					client = fake.NewFakeClient(
-						desiredQStatefulSet,
-					)
+					client = fake.
+						NewClientBuilder().
+						WithObjects(desiredQStatefulSet).
+						Build()
 					manager.GetClientReturns(client)
 				})
 
 				It("should go into meltdown", func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.RequeueAfter).To(Equal(qstscontroller.ReconcileSkipDuration))
 					Expect(logs.FilterMessageSnippet("Meltdown started for").Len()).To(Equal(1))
 				})
 
 				It("should stay in meltown when multiple reconciles happen", func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.RequeueAfter).To(Equal(qstscontroller.ReconcileSkipDuration))
 					Expect(logs.FilterMessageSnippet("Meltdown started for").Len()).To(Equal(1))
 					now := metav1.Now()
 					desiredQStatefulSet.Status.LastReconcile = &now
 
-					result, err = reconciler.Reconcile(request)
+					result, err = reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result.Requeue).To(BeFalse())
 					Expect(logs.FilterMessageSnippet("Meltdown in progress").Len()).To(Equal(1))
@@ -158,7 +159,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 			})
 
 			It("creates new statefulSet and continues to reconcile when new version is not available", func() {
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
@@ -174,7 +175,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 			})
 
 			It("sets no RollingUpdate even if replica=1", func() {
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
@@ -187,14 +188,15 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				var ss *appsv1.StatefulSet
 				BeforeEach(func() {
 					desiredQStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(3)
-					client = fake.NewFakeClient(
-						desiredQStatefulSet,
-					)
+					client = fake.
+						NewClientBuilder().
+						WithObjects(desiredQStatefulSet).
+						Build()
 					manager.GetClientReturns(client)
 				})
 
 				JustBeforeEach(func() {
-					result, err := reconciler.Reconcile(request)
+					result, err := reconciler.Reconcile(context.Background(), request)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(result).To(Equal(reconcile.Result{}))
 
@@ -226,14 +228,15 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 
 				When("zoneNodeLabel has default value", func() {
 					BeforeEach(func() {
-						client = fake.NewFakeClient(
-							desiredQStatefulSet,
-						)
+						client = fake.
+							NewClientBuilder().
+							WithObjects(desiredQStatefulSet).
+							Build()
 						manager.GetClientReturns(client)
 					})
 
 					It("Creates new version and updates AZ info", func() {
-						result, err := reconciler.Reconcile(request)
+						result, err := reconciler.Reconcile(context.Background(), request)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(result).To(Equal(reconcile.Result{}))
 
@@ -332,14 +335,15 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 						customizedNodeLabel = "fake-zone-label"
 						desiredQStatefulSet.Spec.ZoneNodeLabel = customizedNodeLabel
 
-						client = fake.NewFakeClient(
-							desiredQStatefulSet,
-						)
+						client = fake.
+							NewClientBuilder().
+							WithObjects(desiredQStatefulSet).
+							Build()
 						manager.GetClientReturns(client)
 					})
 
 					It("Creates new version and updates AZ info", func() {
-						result, err := reconciler.Reconcile(request)
+						result, err := reconciler.Reconcile(context.Background(), request)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(result).To(Equal(reconcile.Result{}))
 
@@ -440,7 +444,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 			It("doesn't create new statefulSet if quarksStatefulSet was not found", func() {
 				client.GetReturns(errors.NewNotFound(schema.GroupResource{}, "not found is requeued"))
 
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 			})
@@ -448,7 +452,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 			It("throws an error if get quarksStatefulSet returns error", func() {
 				client.GetReturns(errors.NewServiceUnavailable("fake-error"))
 
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("fake-error"))
 				Expect(result).To(Equal(reconcile.Result{}))
@@ -502,10 +506,12 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				lastReconcileTime := metav1.NewTime(metav1.Now().Add(qstscontroller.ReconcileSkipDuration))
 				desiredQStatefulSet.Status.LastReconcile = &lastReconcileTime
 
-				client = fake.NewFakeClient(
-					desiredQStatefulSet,
-					v2StatefulSet,
-				)
+				client = fake.
+					NewClientBuilder().
+					WithObjects(
+						desiredQStatefulSet,
+						v2StatefulSet).
+					Build()
 				manager.GetClientReturns(client)
 			})
 
@@ -515,7 +521,7 @@ var _ = Describe("ReconcileQuarksStatefulSet", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(ss.GetAnnotations()).To(HaveKeyWithValue(qstsv1a1.AnnotationVersion, "2"))
 
-				result, err := reconciler.Reconcile(request)
+				result, err := reconciler.Reconcile(context.Background(), request)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(Equal(reconcile.Result{}))
 
