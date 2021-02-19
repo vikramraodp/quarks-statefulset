@@ -144,10 +144,9 @@ var _ = Describe("Add labels to qsts pods", func() {
 			It("sets ordinal labels correct", func() {
 				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-				Expect(response.Patches).To(HaveLen(3))
+				Expect(response.Patches).To(HaveLen(2))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
-				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
 				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
@@ -164,10 +163,9 @@ var _ = Describe("Add labels to qsts pods", func() {
 			It("sets ordinal labels correct", func() {
 				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-				Expect(response.Patches).To(HaveLen(3))
+				Expect(response.Patches).To(HaveLen(2))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
-				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
 				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
@@ -215,10 +213,9 @@ var _ = Describe("Add labels to qsts pods", func() {
 			It("sets ordinal labels are correct", func() {
 				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-				Expect(response.Patches).To(HaveLen(3))
+				Expect(response.Patches).To(HaveLen(2))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "1")))
-				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "1")))
 				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "1")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())
@@ -237,10 +234,9 @@ var _ = Describe("Add labels to qsts pods", func() {
 				It("sets ordinal labels correctly", func() {
 					Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-					Expect(response.Patches).To(HaveLen(3))
+					Expect(response.Patches).To(HaveLen(2))
 					patches := jsonPatches(response.Patches)
 					Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
-					Expect(patches).To(ContainElement(addLabelPatch("spec-index", "0")))
 					// first created pod is bootstrapping,
 					// this pod was created second, so
 					// startup-ordinal should be 1
@@ -265,7 +261,7 @@ var _ = Describe("Add labels to qsts pods", func() {
 				It("keeps the previous startup-ordinal", func() {
 					Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-					Expect(response.Patches).To(HaveLen(3))
+					Expect(response.Patches).To(HaveLen(2))
 					patches := jsonPatches(response.Patches)
 					Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "0")))
 					// this is just a restart
@@ -287,10 +283,9 @@ var _ = Describe("Add labels to qsts pods", func() {
 			It("sets ordinal labels are correct", func() {
 				Expect(response.Allowed).To(BeTrue(), fmt.Sprintf("%v", response.Result))
 
-				Expect(response.Patches).To(HaveLen(3))
+				Expect(response.Patches).To(HaveLen(2))
 				patches := jsonPatches(response.Patches)
 				Expect(patches).To(ContainElement(addLabelPatch("pod-ordinal", "1")))
-				Expect(patches).To(ContainElement(addLabelPatch("spec-index", "1")))
 				Expect(patches).To(ContainElement(addLabelPatch("startup-ordinal", "0")))
 
 				Expect(response.AdmissionResponse.Allowed).To(BeTrue())

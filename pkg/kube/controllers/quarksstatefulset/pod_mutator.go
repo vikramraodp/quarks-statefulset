@@ -79,15 +79,8 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 func setPodOrdinal(pod *corev1.Pod, podLabels map[string]string) {
 	podOrdinal := names.OrdinalFromPodName(pod.GetName())
 
-	azIndex, err := strconv.Atoi(podLabels[qstsv1a1.LabelAZIndex])
-	if err != nil {
-		azIndex = 0
-	}
-	specIndex := names.SpecIndex(azIndex, podOrdinal)
-
 	if podOrdinal != -1 {
 		podLabels[qstsv1a1.LabelPodOrdinal] = strconv.Itoa(podOrdinal)
-		podLabels[qstsv1a1.LabelInstance] = strconv.Itoa(specIndex)
 		pod.SetLabels(podLabels)
 	}
 }
