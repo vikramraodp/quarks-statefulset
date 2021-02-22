@@ -34,9 +34,6 @@ var (
 	// LabelStartupOrdinal is the index of a pod in startup order
 	LabelStartupOrdinal = fmt.Sprintf("%s/startup-ordinal", apis.GroupName)
 
-	// LabelInstance is the instance.id/spec.id
-	LabelInstance = fmt.Sprintf("%s/spec-index", apis.GroupName)
-
 	// LabelQStsName is the name of the QuarksStatefulSet owns this resource
 	LabelQStsName = fmt.Sprintf("%s/quarks-statefulset-name", apis.GroupName)
 	// LabelStsName is the name of the QuarksStatefulSet owns this resource
