@@ -1,7 +1,6 @@
 package v1alpha1
 
 import (
-	"encoding/json"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,8 +20,6 @@ const DefaultZoneNodeLabel = "failure-domain.beta.kubernetes.io/zone"
 var (
 	// AnnotationVersion is the annotation key for the StatefulSet version
 	AnnotationVersion = fmt.Sprintf("%s/version", apis.GroupName)
-	// AnnotationRevisions contains the history of revisions and pod ordinals and their startup ordinals
-	AnnotationRevisions = fmt.Sprintf("%s/ordinal-revisions", apis.GroupName)
 	// AnnotationZones is an array of all zones
 	AnnotationZones = fmt.Sprintf("%s/zones", apis.GroupName)
 	// LabelAZIndex is the index of available zone
@@ -31,8 +28,6 @@ var (
 	LabelAZName = fmt.Sprintf("%s/az-name", apis.GroupName)
 	// LabelPodOrdinal is the index of pod ordinal
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
-	// LabelStartupOrdinal is the index of a pod in startup order
-	LabelStartupOrdinal = fmt.Sprintf("%s/startup-ordinal", apis.GroupName)
 
 	// LabelQStsName is the name of the QuarksStatefulSet owns this resource
 	LabelQStsName = fmt.Sprintf("%s/quarks-statefulset-name", apis.GroupName)
@@ -111,53 +106,4 @@ func (q *QuarksStatefulSet) GetMaxAvailableVersion(versions map[int]bool) int {
 // GetNamespacedName returns the resource name with its namespace
 func (q *QuarksStatefulSet) GetNamespacedName() string {
 	return fmt.Sprintf("%s/%s", q.Namespace, q.Name)
-}
-
-// Revisions maps controller revision hashes to a map of assigned startup ordinals for each pod ordinal
-type Revisions map[string]Ordinals
-
-// Ordinals maps assigned pod ordinals to their corresponding startup ordinals
-type Ordinals map[string]string
-
-// GetRevisions returns the controller-revision-hash lookup table for pod ordinal to startup ordinal assignments
-// returns empty struct if annotation couldn't be parse, since we can't distinguish between 'new' and 'corrupted'
-func (q *QuarksStatefulSet) GetRevisions() Revisions {
-	data := q.Annotations[AnnotationRevisions]
-	revisions := &Revisions{}
-	err := json.Unmarshal([]byte(data), revisions)
-	if err != nil {
-		return Revisions{}
-	}
-	return *revisions
-}
-
-// SetRevisions sets the revisions annotation
-func (q *QuarksStatefulSet) SetRevisions(revisions Revisions) error {
-	data, err := json.Marshal(revisions)
-	if err != nil {
-		return err
-	}
-	metav1.SetMetaDataAnnotation(&q.ObjectMeta, AnnotationRevisions, string(data))
-	return nil
-}
-
-// StartupOrdinal returns the assigned one for a given revision hash and pod ordinal
-func (r Revisions) StartupOrdinal(revision string, podOrdinal string) string {
-	if r, found := r[revision]; found {
-		if startupOrdinal, found := r[podOrdinal]; found {
-			return startupOrdinal
-		}
-	}
-	return ""
-}
-
-// Set the startup ordinal for a given revision and pod ordinal
-func (r Revisions) Set(revision string, podOrdinal string, startupOrdinal string) {
-	o := r[revision]
-	if o == nil {
-		o = Ordinals{}
-	}
-	o[podOrdinal] = startupOrdinal
-
-	r[revision] = o
 }

@@ -1,12 +1,10 @@
 package integration_test
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	. "github.com/onsi/ginkgo"
@@ -268,49 +266,6 @@ var _ = Describe("QuarksStatefulSet", func() {
 
 				err = waitForState(env.Namespace, qSts.Name, "Failed")
 				Expect(err).NotTo(HaveOccurred())
-			})
-		})
-
-		When("restarting a pod from the quarks statefulset", func() {
-			BeforeEach(func() {
-				quarksStatefulSet.Spec.Template.Spec.Replicas = pointers.Int32(3)
-				quarksStatefulSet.Spec.Template.Spec.Template.Spec.TerminationGracePeriodSeconds = pointers.Int64(10)
-				qSts = &quarksStatefulSet
-			})
-
-			It("keeps the previous startup ordinal", func() {
-				By("Checking for pod")
-				err = env.WaitForPodCount(env.Namespace, "testpod=yes", 3)
-				Expect(err).NotTo(HaveOccurred())
-
-				pods, err := env.GetPods(env.Namespace, "testpod=yes")
-				Expect(err).NotTo(HaveOccurred())
-
-				By("Checking for the pod-ordinal label")
-				expect := map[string]string{}
-				for _, p := range pods.Items {
-					if ord, ok := p.Labels["quarks.cloudfoundry.org/pod-ordinal"]; ok {
-						expect[ord] = p.Labels[qstsv1a1.LabelStartupOrdinal]
-					}
-				}
-				pod := pods.Items[1]
-				client := env.Clientset.CoreV1().Pods(env.Namespace)
-
-				By("Restarting a pod")
-				err = client.Delete(context.Background(), pod.Name, metav1.DeleteOptions{})
-				Expect(err).NotTo(HaveOccurred())
-
-				var p *v1.Pod
-				Eventually(func() bool {
-					p, _ = client.Get(context.Background(), pod.Name, metav1.GetOptions{})
-					return p.ObjectMeta.ResourceVersion > pod.ObjectMeta.ResourceVersion
-				}, 60*time.Second).Should(Equal(true))
-
-				for _, pod := range pods.Items {
-					p, _ := client.Get(context.Background(), pod.Name, metav1.GetOptions{})
-					ord := p.Labels["quarks.cloudfoundry.org/pod-ordinal"]
-					Expect(p.Labels[qstsv1a1.LabelStartupOrdinal]).To(Equal(expect[ord]))
-				}
 			})
 		})
 	})
