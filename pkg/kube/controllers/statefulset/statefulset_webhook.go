@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistration "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +58,7 @@ func (m *Mutator) Handle(ctx context.Context, req admission.Request) admission.R
 	}
 
 	if isControlledRolloutStatefulSet(statefulset) {
-		if req.Operation == v1beta1.Create {
+		if req.Operation == admissionv1.Create {
 			ConfigureStatefulSetForInitialRollout(statefulset)
 		} else {
 			err = m.decoder.DecodeRaw(req.OldObject, oldStatefulset)
