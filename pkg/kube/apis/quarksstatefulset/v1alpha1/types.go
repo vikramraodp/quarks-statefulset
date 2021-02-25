@@ -29,10 +29,15 @@ var (
 	// LabelPodOrdinal is the index of pod ordinal
 	LabelPodOrdinal = fmt.Sprintf("%s/pod-ordinal", apis.GroupName)
 
-	// LabelQStsName is the name of the QuarksStatefulSet owns this resource
+	// LabelQStsName is the name of the StatefulSet, not the
+	// QuarksStatefulSet. It's used for active-passive probes. In contrast
+	// to the qsts name, a statefulset name might have an AZ suffix, since
+	// there is one sts per AZ.
+	//
+	// So this label has the wrong name, but since Spec.Selector has to
+	// match Spec.Template.Labels and it's forbidden to update
+	// Spec.Selector, we can't fix the name.
 	LabelQStsName = fmt.Sprintf("%s/quarks-statefulset-name", apis.GroupName)
-	// LabelStsName is the name of the QuarksStatefulSet owns this resource
-	LabelStsName = fmt.Sprintf("%s/statefulset-name", apis.GroupName)
 
 	// LabelActivePod is the active pod on an active/passive setup
 	LabelActivePod = fmt.Sprintf("%s/pod-active", apis.GroupName)
