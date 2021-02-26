@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -60,11 +58,6 @@ func (m *PodMutator) Handle(ctx context.Context, req admission.Request) admissio
 			podLabels = map[string]string{}
 		}
 		setPodOrdinal(updatedPod, podLabels)
-
-		err := m.setStartupOrdinal(ctx, updatedPod, podLabels)
-		if err != nil {
-			return admission.Errored(http.StatusInternalServerError, err)
-		}
 	}
 
 	marshaledPod, err := json.Marshal(updatedPod)
@@ -83,82 +76,6 @@ func setPodOrdinal(pod *corev1.Pod, podLabels map[string]string) {
 		podLabels[qstsv1a1.LabelPodOrdinal] = strconv.Itoa(podOrdinal)
 		pod.SetLabels(podLabels)
 	}
-}
-
-// startupOrdinal values are persisted in an annotation in the owning qsts, so they can be reused in case of a restart
-func (m *PodMutator) setStartupOrdinal(ctx context.Context, pod *corev1.Pod, podLabels map[string]string) error {
-	revision := pod.Labels["controller-revision-hash"]
-
-	// check for revision in qsts annotation
-	qsts := &qstsv1a1.QuarksStatefulSet{}
-	qstsName := types.NamespacedName{Name: pod.Labels[qstsv1a1.LabelQStsName], Namespace: pod.Namespace}
-	err := m.client.Get(ctx, qstsName, qsts)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get qsts owning '%s/%s'", pod.Namespace, pod.Name)
-	}
-
-	revisions := qsts.GetRevisions()
-
-	// cleanup annotation, by removing outdated revisions
-	list := &appsv1.StatefulSetList{}
-	err = m.client.List(ctx, list, client.InNamespace(pod.Namespace))
-	if err != nil {
-		return errors.Wrapf(err, "failed to list sts in namespace: '%s'", pod.Namespace)
-	}
-	seen := map[string]bool{}
-	for _, sts := range list.Items {
-		if r := sts.Status.CurrentRevision; r != "" {
-			seen[r] = true
-		}
-	}
-	for r := range revisions {
-		if !seen[r] {
-			m.log.Debugf("Clean up qsts revisions annotation, removing sts revision '%s'", r)
-			delete(revisions, r)
-		}
-	}
-
-	// use old startup ordinal if stored
-	podOrdinal := pod.Labels[qstsv1a1.LabelPodOrdinal]
-	startupOrdinal := ""
-	if s := revisions.StartupOrdinal(revision, podOrdinal); s != "" {
-		startupOrdinal = s
-
-	} else {
-		// check for other pods in that revision
-		labels := map[string]string{"controller-revision-hash": revision}
-		list := &corev1.PodList{}
-		err = m.client.List(ctx, list, client.InNamespace(pod.Namespace), client.MatchingLabels(labels))
-		if err != nil {
-			return errors.Wrapf(err, "failed to list pods in namespace: '%s'", pod.Namespace)
-		}
-
-		// count existing pods in revision
-		newOrdinal := 0
-		for _, p := range list.Items {
-			if p.Name != pod.Name {
-				newOrdinal++
-			}
-		}
-		startupOrdinal = strconv.Itoa(newOrdinal)
-	}
-
-	podLabels[qstsv1a1.LabelStartupOrdinal] = startupOrdinal
-	pod.SetLabels(podLabels)
-
-	// store revisions
-	revisions.Set(revision, podOrdinal, startupOrdinal)
-	err = qsts.SetRevisions(revisions)
-	if err != nil {
-		return errors.Wrapf(err, "failed to marshall revisions annotations for '%s'", qstsName)
-	}
-
-	m.log.Debugf("Update qsts revisions annotation on '%s' while mutating pod '%s/%s': %#v", qsts.Name, startupOrdinal, pod.Namespace, pod.Name, revisions)
-	err = m.client.Update(ctx, qsts)
-	if err != nil {
-		return errors.Wrapf(err, "failed to update revisions annotation on qsts '%s'", qstsName)
-	}
-	return nil
 }
 
 // isQuarksStatefulSet check is it is quarksStatefulSet Pod

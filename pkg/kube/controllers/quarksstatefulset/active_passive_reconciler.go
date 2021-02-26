@@ -216,7 +216,7 @@ func (r *ReconcileStatefulSetActivePassive) execContainerCmd(pod *corev1.Pod, co
 
 func (r *ReconcileStatefulSetActivePassive) getStsPodList(ctx context.Context, desiredSts *appsv1.StatefulSet) (*corev1.PodList, error) {
 	podList := &corev1.PodList{}
-	stsSelector := labels.SelectorFromSet(labels.Set(map[string]string{qstsv1a1.LabelStsName: desiredSts.Name}))
+	stsSelector := labels.SelectorFromSet(labels.Set(map[string]string{qstsv1a1.LabelQStsName: desiredSts.Name}))
 	err := r.client.List(ctx,
 		podList,
 		crc.InNamespace(desiredSts.Namespace),

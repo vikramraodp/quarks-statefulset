@@ -264,8 +264,7 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 		statefulSet = r.updateAffinity(statefulSet, qStatefulSet.Spec.ZoneNodeLabel, zoneName)
 	}
 	labels[qstsv1a1.LabelAZIndex] = strconv.Itoa(zoneIndex)
-	labels[qstsv1a1.LabelQStsName] = qStatefulSet.GetName()
-	labels[qstsv1a1.LabelStsName] = statefulSetNamePrefix
+	labels[qstsv1a1.LabelQStsName] = statefulSetNamePrefix
 
 	annotations[statefulset.AnnotationCanaryRolloutEnabled] = "true"
 
@@ -274,6 +273,7 @@ func (r *ReconcileQuarksStatefulSet) generateSingleStatefulSet(qStatefulSet *qst
 	statefulSet.Spec.Template.SetAnnotations(util.UnionMaps(statefulSet.Spec.Template.GetAnnotations(), annotations))
 	statefulSet.SetName(statefulSetNamePrefix)
 	statefulSet.SetLabels(util.UnionMaps(statefulSet.GetLabels(), labels))
+	// Spec.Selector has to match Spec.Template.Labels
 	statefulSet.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: labels,
 	}
