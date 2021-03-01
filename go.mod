@@ -11,7 +11,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.11.0 // indirect
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.2
+	github.com/onsi/gomega v1.10.5
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.4.1
 	github.com/spf13/cobra v1.1.1
