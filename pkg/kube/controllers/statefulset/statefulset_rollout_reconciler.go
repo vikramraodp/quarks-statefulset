@@ -100,7 +100,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(_ context.Context, request recon
 	}
 
 	if timedOut, err := r.failIfTimedOut(ctx, statefulSet, AnnotationUpdateWatchTime); timedOut || err != nil {
-		ctxlog.Errorf(ctx, "Error updating StatefulSet '%s' after timeout: %s", request.NamespacedName, err)
+		ctxlog.Errorf(ctx, "Error updating StatefulSet '%s' after timeout, err: %v", request.NamespacedName, err)
 		return reconcile.Result{}, err
 	}
 
@@ -162,7 +162,7 @@ func (r *ReconcileStatefulSetRollout) Reconcile(_ context.Context, request recon
 		}
 	}
 	statusChanged := newStatus != statefulSet.Annotations[AnnotationCanaryRollout]
-	ctxlog.Debugf(ctx, "Statefulset rollout for '%s/%s' is in status %s", statefulSet.Namespace, statefulSet.Name, newStatus)
+	ctxlog.Infof(ctx, "Statefulset rollout for '%s/%s' is in status %s", statefulSet.Namespace, statefulSet.Name, newStatus)
 	if statusChanged {
 		statefulSet.Annotations[AnnotationCanaryRollout] = newStatus
 		dirty = true

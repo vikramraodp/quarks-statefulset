@@ -107,11 +107,11 @@ func (r *ReconcileStatefulSetActivePassive) Reconcile(_ context.Context, request
 
 	ps := time.Second * time.Duration(qSts.Spec.ActivePassiveProbes[containerName].PeriodSeconds)
 	if ps == (time.Second * time.Duration(0)) {
-		ctxlog.WithEvent(qSts, "active-passive").Debugf(ctx, "periodSeconds probe was not specified, going to default to 30 secs")
 		ps = time.Second * 30
 	}
 
 	// Reconcile for any reason than error after the ActivePassiveProbe PeriodSeconds
+	ctxlog.WithEvent(qSts, "active-passive").Debugf(ctx, "Requeue probe for '%s' in %s", request.NamespacedName, ps)
 	return reconcile.Result{RequeueAfter: ps}, nil
 }
 
