@@ -41,7 +41,7 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 		// Expect(env.WaitForPVCsDelete(env.Namespace)).To(Succeed())
 	})
 
-	Context("when pod-active label is not present and probe passes", func() {
+	When("pod-active label is not present and probe passes", func() {
 		sleepCMD := []string{"/bin/sh", "-c", "sleep 2"}
 		It("should label a single pod out of one", func() {
 			By("Creating a QuarksStatefulSet with a valid CRD probe cmd")
@@ -65,7 +65,7 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 		})
 	})
 
-	Context("when pod-active label is present in one pod and probe fails", func() {
+	When("pod-active label is present in one pod and probe fails", func() {
 
 		cmdSleepTypo := []string{"/bin/sh", "-c", "sleeps 2"}
 
@@ -98,7 +98,7 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 		})
 	})
 
-	Context("when pod-active label is present in multiple pods and only one probe pass", func() {
+	When("pod-active label is present in multiple pods and only one probe pass", func() {
 		// two set of cmds, one that runs as the CRD probe
 		// the second one, runs as a patch, so that the next CRD probe executiong will pass
 		cmdCatScript := []string{"/bin/sh", "-c", "cat /tmp/busybox-script.sh"}
@@ -160,7 +160,7 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 		})
 	})
 
-	Context("when active passive pod fails a new one becomes active", func() {
+	When("active passive pod fails a new one becomes active", func() {
 		cmdCatScript := []string{"/bin/sh", "-c", "cat /tmp/busybox-script.sh"}
 		cmdTouchScript := []string{"/bin/sh", "-c", "touch /tmp/busybox-script.sh"}
 		containerName := "busybox"
@@ -242,7 +242,7 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 		})
 	})
 
-	Context("when multiple pods pass the probe multiple remain active", func() {
+	When("multiple pods pass the probe multiple remain active", func() {
 		cmdCatScript := []string{"/bin/sh", "-c", "cat /tmp/busybox-script.sh"}
 		cmdTouchScript := []string{"/bin/sh", "-c", "touch /tmp/busybox-script.sh"}
 		containerName := "busybox"
@@ -306,7 +306,7 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 		})
 	})
 
-	Context("when CRD does not specify a probe periodSeconds", func() {
+	When("CRD does not specify a probe periodSeconds", func() {
 		cmdDate := []string{"/bin/sh", "-c", "date"}
 		It("should ensure the proper event takes place", func() {
 			By("Creating a QuarksStatefulSet with pods that contain a probe that will initially fail")
@@ -326,14 +326,14 @@ var _ = Describe("QuarksStatefulSetActivePassive", func() {
 					objectName,
 					objectUID,
 					eventReason,
-					"periodSeconds probe was not specified, going to default to 30 secs",
+					fmt.Sprintf("Requeue probe for '%s/%s' in 30s", env.Namespace, qStsName),
 				)
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
-	Context("when QuarksStatefulSet cross AZs", func() {
+	When("QuarksStatefulSet cross AZs", func() {
 		sleepCMD := []string{"/bin/sh", "-c", "sleep 2"}
 		zones := []string{"z0", "z1"}
 		It("should validate all pods cross AZs", func() {
