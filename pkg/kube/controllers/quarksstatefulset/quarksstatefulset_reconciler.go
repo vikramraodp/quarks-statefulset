@@ -106,7 +106,12 @@ func (r *ReconcileQuarksStatefulSet) Reconcile(_ context.Context, request reconc
 	// Update labels of versioned secrets in quarksStatefulSet spec
 	err = r.UpdateVersions(ctx, qStatefulSet)
 	if err != nil {
-		return reconcile.Result{}, ctxlog.WithEvent(qStatefulSet, "IncrementVersionError").Error(ctx, "Could not update labels of versioned secrets in QuarksStatefulSet '", request.NamespacedName, "': ", err)
+		if apierrors.IsNotFound(err) {
+			ctxlog.Infof(ctx, "Requeue, waiting for secret: '%s'", err)
+			return reconcile.Result{RequeueAfter: ReconcileSkipDuration}, nil
+		}
+		_ = ctxlog.WithEvent(qStatefulSet, "IncrementVersionError").Error(ctx, "Could not update labels of versioned secrets in QuarksStatefulSet '", request.NamespacedName, "': ", err)
+		return reconcile.Result{}, err
 	}
 
 	if qStatefulSet.Status.LastReconcile == nil {
