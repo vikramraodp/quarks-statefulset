@@ -20,7 +20,7 @@ require (
 	golang.org/x/tools v0.0.0-20200708183856-df98bc6d456c // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0
 	k8s.io/api v0.20.4
-	k8s.io/apiextensions-apiserver v0.20.1
+	k8s.io/apiextensions-apiserver v0.20.4
 	k8s.io/apimachinery v0.20.4
 	k8s.io/client-go v0.20.4
 	sigs.k8s.io/controller-runtime v0.8.2
