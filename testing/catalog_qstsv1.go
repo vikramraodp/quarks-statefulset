@@ -30,7 +30,7 @@ func (c *Catalog) QstsWithProbeSinglePod(name string, cmd []string) qstsv1a1.Qua
 			ActivePassiveProbes: map[string]v1.Probe{
 				"busybox": v1.Probe{
 					PeriodSeconds: 2,
-					Handler: v1.Handler{
+					ProbeHandler: v1.ProbeHandler{
 						Exec: &v1.ExecAction{
 							Command: cmd,
 						},
@@ -51,7 +51,7 @@ func (c *Catalog) QstsWithProbeSinglePodMultipleAZs(name string, cmd []string, z
 			ActivePassiveProbes: map[string]v1.Probe{
 				"busybox": v1.Probe{
 					PeriodSeconds: 2,
-					Handler: v1.Handler{
+					ProbeHandler: v1.ProbeHandler{
 						Exec: &v1.ExecAction{
 							Command: cmd,
 						},
@@ -74,7 +74,7 @@ func (c *Catalog) QstsWithActiveSinglePod(name string, cmd []string) qstsv1a1.Qu
 			ActivePassiveProbes: map[string]v1.Probe{
 				"busybox": v1.Probe{
 					PeriodSeconds: 2,
-					Handler: v1.Handler{
+					ProbeHandler: v1.ProbeHandler{
 						Exec: &v1.ExecAction{
 							Command: cmd,
 						},
@@ -94,7 +94,7 @@ func (c *Catalog) QstsWithoutProbeMultiplePods(name string, cmd []string) qstsv1
 			Template: c.DefaultStatefulSetWithReplicasN(name),
 			ActivePassiveProbes: map[string]v1.Probe{
 				"busybox": v1.Probe{
-					Handler: v1.Handler{
+					ProbeHandler: v1.ProbeHandler{
 						Exec: &v1.ExecAction{
 							Command: cmd,
 						},
@@ -115,7 +115,7 @@ func (c *Catalog) QstsWithProbeMultiplePods(name string, cmd []string) qstsv1a1.
 			ActivePassiveProbes: map[string]v1.Probe{
 				"busybox": v1.Probe{
 					PeriodSeconds: 2,
-					Handler: v1.Handler{
+					ProbeHandler: v1.ProbeHandler{
 						Exec: &v1.ExecAction{
 							Command: cmd,
 						},
